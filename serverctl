@@ -1,0 +1,118 @@
+#!/bin/sh
+
+bin_path="/usr/local"
+PROC_NAME="btserver"
+PROC_SCRIPT="keep_alive"
+
+start_PROC()
+{
+	if [ $num -eq 1 ];then
+		echo "btserver is running"
+	else
+		echo "start btserver"
+		export LD_LIBRARY_PATH=$bin_path/lib:$LD_LIBRARY_PATH
+		$bin_path/bin/$PROC_NAME $bin_path/etc/beetalk.conf &
+		start_SCRIPT
+	fi
+}
+
+start_SCRIPT()
+{
+	if [ $ret -eq 1 ];then
+		echo "keep_alive is running"
+	else
+		echo "start keep_alive"
+		$bin_path/bin/$PROC_SCRIPT &
+		script_id=$!
+		echo $script_id > /tmp/bttmp
+	fi
+}
+
+stop_PROC()
+{
+	stop_SCRIPT
+	if [ $num -eq 1 ];then
+		echo "stop btserver"
+		#if pkill btserver
+		if kill -9 $(ps -ef | grep -w $PROC_NAME | grep -v grep | awk '{print $2}')
+			then
+			echo "btserver process killed [OK]"
+		else
+			echo "btserver process kill error [failed]"
+		fi
+	else
+		echo "btserver is not running"
+	fi
+}
+
+stop_SCRIPT()
+{
+	if [ $ret -eq 1 ];then
+		echo "stop keep_alive"
+		#if pkill keep_alive
+		if kill -9 $script_id
+		#if kill -9 $(ps -ef | grep -w $PROC_SCRIPT | grep -v grep | awk '{print $2}')
+		then
+			echo "keep_alive process killed [OK]"
+			rm /tmp/bttmp
+		else
+			echo "keep_alive process kill error [failed]"
+		fi
+	else
+		echo "keep_alive is not running"
+	fi
+}
+
+check_PROC()
+{
+	ProcNumber=`ps -ef | grep -w $PROC_NAME | grep -v grep | wc -l`
+	if [ $ProcNumber -gt 0 ];then
+		return 1
+	else
+		return 0
+	fi
+}
+
+check_SCRIPT()
+{
+	script_id=`cat /tmp/bttmp`
+	ProcNumber=`ps -ef | grep -w $script_id | grep -v grep | wc -l`
+	if [ $ProcNumber -gt 0 ];then
+		return 1
+	else
+		return 0
+	fi
+}
+
+check_SCRIPT
+ret=$?
+
+check_PROC
+num=$?
+
+case "$1" in
+start)
+	start_PROC
+	;;
+stop)
+	stop_PROC
+	;;
+restart)
+	stop_PROC
+<<<<<<< HEAD
+	sleep 3
+=======
+>>>>>>> origin/master
+	start_PROC
+	;;
+check)
+	if [ $ret -eq 1 ] && [ $num -eq 1 ];then
+		echo "server status is OK"
+	else
+		echo "server status is bad"
+	fi
+	;;
+*)
+	echo "usage: $0 start|stop|restart|check"
+	exit 0;
+esac

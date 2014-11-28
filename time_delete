@@ -1,0 +1,6 @@
+#!/bin/sh
+
+bin_path="/usr/local"
+
+export LD_LIBRARY_PATH=$bin_path/lib:$LD_LIBRARY_PATH
+$bin_path/bin/delete_con $bin_path/etc/beetalk.conf

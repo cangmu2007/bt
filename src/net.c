@@ -1,0 +1,356 @@
+//中间件收发,mi_fd为全局变量,中间件的文件描述符
+
+#include "head.h"
+
+int Init_Mi_TCP(char* ip,int port)
+{
+	if((mi_fd = socket(AF_INET,SOCK_STREAM,0))<0) //TCP的socket
+    {
+        perror("TCP mi socket");
+        return -1;
+    }
+
+	struct sockaddr_in MI_addr;
+    memset(&MI_addr, 0,sizeof(MI_addr));    //TCP连接地址
+    MI_addr.sin_family = AF_INET;
+    MI_addr.sin_addr.s_addr = inet_addr(ip);
+    MI_addr.sin_port = htons(port);
+
+    if(connect(mi_fd, (struct sockaddr *)&(MI_addr), sizeof(MI_addr))<0) //连接中间件
+    {
+        perror("TCP mi connect");
+        return -1;
+    }
+
+    if(pthread_mutex_init(&mutex_ol,NULL)<0)    //初始化互斥锁
+    {
+        printf("pthread_mutex_init ol error\n");
+        return -1;
+    }
+
+	if(pthread_mutex_init(&mutex,NULL)<0) //初始化互斥锁
+    {
+        printf("pthread_mutex_init mi error\n");
+        return -1;
+    }
+
+    if(sem_init(&mi_send_recv_ctrl, 0, 1)<0)
+    {
+        perror("sem_init");
+        return -1;
+    }
+
+    if(pthread_create(&rad_thread, NULL, (void*)MI_Read, NULL)<0)   //创建接收线程
+    {
+        printf("pthread_create recv\n");
+        return -1;
+    }
+    usleep(500);
+
+    if(Link_Mi()<0)
+    {
+        printf("Failed to connect Middleware\n");
+        close(mi_fd);
+        return -1;
+    }
+    sem_wait(&mi_send_recv_ctrl);
+
+    if(Send_MO_OL()<0)
+    {
+        printf("Failed to send MO_OL to MI\n");
+		return -1;
+    }
+    sem_wait(&mi_send_recv_ctrl);
+
+    if(SEND_GET_PC_ONLINE_LIST()<0)
+    {
+        printf("Failed to Requested PC_OL\n");
+		return -1;
+    }
+	return 0;
+}
+
+int Exit_Mi_TCP()
+{
+	if(pthread_cancel(rad_thread)<0)  //关闭中间件读线程
+    {
+        printf("pthread_cancle recv\n");
+        return -1;
+    }
+    if(pthread_join(rad_thread,NULL)<0) //阻塞主线程
+    {
+        printf("pthread_join recv\n");
+        return -1;
+    }
+
+    if(pthread_mutex_destroy(&mutex_ol)<0)  //销毁互斥锁
+    {
+        printf("pthread_mutex_destroy(ol)");
+        return -1;
+    }
+
+    if(pthread_mutex_destroy(&mutex)<0) //销毁发送端互斥锁
+    {
+        printf("pthread_mutex_destroy(mi)");
+        return -1;
+    }
+
+    if(sem_destroy(&mi_send_recv_ctrl)<0)
+    {
+        perror("sem_destroy");
+        return -1;
+    }
+
+    close(mi_fd);   //关闭中间件套接口
+	return 0;
+}
+
+int MI_Write(const char *bsnsdata, int len,int flag)
+{
+    int num = -1;
+    unsigned short max_len = DATA_BUF_LEN;
+    int headlen = sizeof(TransPacket);
+    unsigned short nCutLen = max_len - headlen;// 分包数据域最大长度
+    unsigned short nCount = (0 == len%nCutLen) ? (len/nCutLen) : (len/nCutLen + 1);// 分包总数
+    unsigned short nCurlen = 0;// 当前分包数据长度
+    unsigned char *pOffset = NULL;// 当前数据位置
+    unsigned short i = 0;
+    char temp[DATA_BUF_LEN]= {0};
+    memset(temp,0,DATA_BUF_LEN);
+    TsPt transpacket=(TsPt)malloc(sizeof(TransPacket));
+<<<<<<< HEAD
+	memset(transpacket,0,sizeof(TransPacket));
+=======
+>>>>>>> origin/master
+    if(NULL==transpacket)
+    {
+        perror("malloc error");
+        return -1;
+    }
+    transpacket->Count = nCount;
+    pthread_mutex_lock(&mutex); //上锁
+    for(i = 0; i < nCount; i++)
+    {
+        // 不是最后的分包的话当前切割长度为切割定长，否则为最后剩余量
+        nCurlen = (i != nCount - 1) ? nCutLen : (len - i*nCutLen);
+        pOffset = (unsigned char *)(bsnsdata + i*nCutLen);// 挪动数据偏移指针
+        transpacket->Index = i;// 设置分包索引
+        transpacket=calcULate_verfy(transpacket, pOffset, nCurlen); // 设置数据域、长度计算数据校验、包头校验
+
+        // 包头和数据域拷入缓冲区
+        memcpy(temp,  transpacket, headlen);
+        memcpy(temp + headlen, pOffset, nCurlen);
+
+        // 分得一个就发一个
+        int total = nCurlen + headlen;
+        int nSend = 0;
+        while(nSend < total)
+        {
+            num = send(mi_fd, temp + nSend, total - nSend, MSG_NOSIGNAL);
+            if(-1 == num)
+            {
+				perror("TCP send");
+                break;
+            }
+            else
+            {
+                nSend += num;
+            }
+        }
+        if(nSend != total)
+        {
+            break;
+        }
+    }
+<<<<<<< HEAD
+	free(transpacket);
+=======
+>>>>>>> origin/master
+	if(num==-1&&flag==1)
+	{
+		Exit_Mi_TCP();
+		sleep(3);
+		Init_Mi_TCP(MI_ADDR,MI_PORT);
+		num=MI_Write(bsnsdata,len,0);
+	}
+    pthread_mutex_unlock(&mutex);   //解锁
+    return (num == -1) ? -1 : len + headlen;
+}
+
+void* MI_Read(void* args)   //TCP接收并做相应处理
+{
+    //pthread_detach(pthread_self());   //分离线程
+    int num = -1;
+    char rbuf[DATA_BUF_LEN]= {0};
+
+    int ret = 0,head;
+    uint nHeadLen = sizeof(TransPacket);
+    char *pBsns = 0;    // 完整业务包数据
+    uint nBsnsLen = 0;   // 完整业务包数据长度
+
+    for(;;)
+    {
+        memset(rbuf,0,DATA_BUF_LEN);    //清空缓冲区
+
+        // 1、先收12字节包头
+        head = 0;
+        while(head < nHeadLen)
+        {
+            num = recv(mi_fd, rbuf + head, nHeadLen - head, 0);
+            if(num <= 0)
+            {
+                perror("TCP recv");
+                ret = -1;
+                break;
+            }
+            else
+            {
+                head += num;
+            }
+        }
+        if(-1 == ret)
+        {
+            break;
+        }
+        // 2、按传输包头指示的其所带业务数据的长度定额接收数据
+        TsPt pTrans = (TsPt)rbuf;
+        uint datalen = 0;
+        char *data = rbuf + nHeadLen;
+        while(datalen < pTrans->Datalen)
+        {
+            num = recv(mi_fd, data + datalen, pTrans->Datalen - datalen, 0);
+            if(num <= 0)
+            {
+                perror("TCP recv");
+                ret = -1;
+                break;
+            }
+            else
+            {
+                datalen += num;
+            }
+        }
+        if(-1 == ret)
+        {
+            break;
+        }
+        // 3、收完一个完整的传输包之后根据传输包头的指示进行分包整合
+        pBsns = (char*)realloc(pBsns, nBsnsLen + pTrans->Datalen);
+        memcpy(pBsns + nBsnsLen, data, pTrans->Datalen);
+        nBsnsLen += pTrans->Datalen;
+        if(pTrans->Count == pTrans->Index + 1)
+        {
+            // 对业务包进行处理
+            HandleBusiness((BsPt)pBsns, (const char*)(pBsns + sizeof(BsnsPacket)), nBsnsLen - sizeof(BsnsPacket));
+            free(pBsns);
+            pBsns = 0;
+            nBsnsLen = 0;
+        }
+    }
+    if(pBsns != 0)
+    {
+        free(pBsns);
+    }
+    if(-1==ret)
+    {
+        pthread_exit((void*)&ret);  //出错关闭线程并返回-1
+    }
+}
+
+void HandleBusiness(BsPt pBsns, const char *data, uint len)
+{
+    // 先解密
+    uint srclen = pBsns->Srclen;
+    char *srcdata = NULL;
+    switch (pBsns->Command)
+    {
+        case MC_EXTAPP_CONN:
+            OnMiddleLogin(pBsns->Result);
+            break;
+        case MC_EXTAPP_SCHEMA:
+            OnMiddleSchema(pBsns->Result);
+            break;
+        case MC_EXTAPP_GETONLINELIST:
+<<<<<<< HEAD
+            srcdata=(char*)malloc(srclen+1);
+			memset(srcdata,0,srclen+1);
+=======
+            srcdata=(char*)malloc(srclen);
+>>>>>>> origin/master
+            memcpy(srcdata,data,srclen);
+            OnGetOnlineList(pBsns->Result, srcdata, srclen);
+            free(srcdata);
+            break;
+        case MC_BTPC_LOGIN:
+            if(SEND_GET_PC_ONLINE_LIST()<0)
+                printf("Failed to Requested PC_OL\n");
+            break;
+        case MC_BTPC_LOGOUT:
+            if(SEND_GET_PC_ONLINE_LIST()<0)
+                printf("Failed to Requested PC_OL\n");
+            break;
+        case MC_BTPC_CTM_BASEINFO:
+            MSG_INFO(pBsns->Result,CTRLPERSON);
+            break;
+        case MC_BTPC_CTM_MOOD:
+            break;
+        case MC_BTPC_GROUP_NOTICE:
+            break;
+<<<<<<< HEAD
+        case MC_BTPC_PTOP_MSG:
+			srcdata=(char*)malloc(srclen+1);
+			memset(srcdata,0,srclen+1);
+=======
+        case MC_BTPC_MULTI_SUBJECT:
+            break;
+        case MC_BTPC_PTOP_MSG:
+            srcdata=(char*)malloc(srclen);
+>>>>>>> origin/master
+            memcpy(srcdata,data,srclen);
+            MSG_RECV(pBsns->Result, srcdata, srclen,CTRLPERSON);
+            free(srcdata);
+            break;
+        case MC_BTPC_GROUP_MSG:
+<<<<<<< HEAD
+            srcdata=(char*)malloc(srclen+1);
+			memset(srcdata,0,srclen+1);
+=======
+            srcdata=(char*)malloc(srclen);
+>>>>>>> origin/master
+            memcpy(srcdata,data,srclen);
+            MSG_RECV(pBsns->Result, srcdata, srclen,CTRLGROUP);
+            free(srcdata);
+            break;
+        case MC_BTPC_MULTI_MSG:
+<<<<<<< HEAD
+            srcdata=(char*)malloc(srclen+1);
+			memset(srcdata,0,srclen+1);
+=======
+            srcdata=(char*)malloc(srclen);
+>>>>>>> origin/master
+            memcpy(srcdata,data,srclen);
+            MSG_RECV(pBsns->Result, srcdata, srclen,CTRLMUTIL);
+            free(srcdata);
+            break;
+        case MC_BTPC_GROUP_CREATE:
+            MSG_INFO(pBsns->Result,CTRLGROUP);
+            break;
+		case MC_BTPC_MULTI_CREATE:
+			MSG_INFO(pBsns->Result,CTRLMUTIL);
+            break;
+        case MC_BTPC_GROUP_DELETE:
+            MSG_INFO(pBsns->Result,CTRLGROUP);
+            break;
+        case MC_BTPC_MULTI_DELUSER:
+            MSG_INFO(pBsns->Result,CTRLMUTIL);
+            break;
+<<<<<<< HEAD
+		case MC_BTPC_MULTI_SUBJECT:
+            MSG_INFO(pBsns->Result,CTRLMUTIL);
+            break;
+=======
+>>>>>>> origin/master
+        default:
+            break;
+    }
+}
