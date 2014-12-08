@@ -10,10 +10,7 @@ AC_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(server,1.0)
 
 # Checks for programs.
-<<<<<<< HEAD
 ${CFLAGS="-O2"}
-=======
->>>>>>> origin/master
 AC_PROG_CC
 
 AC_ARG_ENABLE(epoll,[	--enable-epoll	epoll support],,enable_epoll=no)
@@ -22,11 +19,7 @@ if test "$enable_epoll" = yes; then
 fi
 
 # Checks for libraries.
-<<<<<<< HEAD
 AC_CHECK_LIB([pthread],[sybdb],[z])
-=======
-AC_CHECK_LIB([pthread],[sybdb])
->>>>>>> origin/master
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -44,13 +37,8 @@ AC_FUNC_REALLOC
 AC_CHECK_FUNCS([memset socket strchr strerror strstr])
 
 AC_CONFIG_FILES([CONFIG/Makefile
-<<<<<<< HEAD
                  DES/Makefile            
 		 COMPRESS/Makefile
 		 src/Makefile
-=======
-                 DES/Makefile
-                 src/Makefile
->>>>>>> origin/master
 		 Makefile])
 AC_OUTPUT

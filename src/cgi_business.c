@@ -1,9 +1,5 @@
 #include "head.h"
-<<<<<<< HEAD
 #include "compress.h"
-=======
-
->>>>>>> origin/master
 
 char* Check_Logined(char* loginer)
 {
@@ -27,11 +23,7 @@ char* Login(char* loginer,char* password)
     {
 		UL ul=get_point(user,loginer);
 		if(NULL!=ul)
-<<<<<<< HEAD
         	delete_point_log(user,ul);
-=======
-        delete_point_log(user,ul);
->>>>>>> origin/master
 		return "FAULT";
 	}
     flush_list(user);
@@ -65,6 +57,7 @@ char* GetOrg_Stu()
 	if(GetOnlineCtms(CONPANY_ID)<0)
     {
         printf("Failed to get the organizational structure\n");
+		writelog("Failed to get the organizational structure");
 		if(org_stu != NULL && 0 != strcmp(org_stu, MO_XML_HEAD))
 		{
 			free(org_stu);
@@ -73,32 +66,20 @@ char* GetOrg_Stu()
 		return "FALUT";
         //exit(-1);
     }
-<<<<<<< HEAD
 	return xml_compress(org_stu,0);
     //return org_stu;
-=======
-    return org_stu;
->>>>>>> origin/master
 }
 
 char* GetPc_Ol()
 {
-<<<<<<< HEAD
 	return xml_compress(PC_OL,0);
     //return PC_OL;
-=======
-    return PC_OL;
->>>>>>> origin/master
 }
 
 char* GetMo_Ol()
 {
-<<<<<<< HEAD
 	return xml_compress(MO_OL,0);
     //return MO_OL;
-=======
-    return MO_OL;
->>>>>>> origin/master
 }
 
 char* ServerPush(char* loginer,char* msg,int fd,UL ul)
@@ -141,14 +122,10 @@ char* ServerPush(char* loginer,char* msg,int fd,UL ul)
     //查数据库里的离线信息
     char* re_msg=search_info(loginer,CTRLALL);
     if(re_msg!=NULL)
-<<<<<<< HEAD
 	{
 		return xml_compress(re_msg,1);
         //return re_msg;
 	}
-=======
-        return re_msg;
->>>>>>> origin/master
     return GetImf(ul,loginer);
 }
 
@@ -169,15 +146,11 @@ char* GetImf(UL ul,char* loginer)
 
 char* GetGrouper(char* gid)
 {
-<<<<<<< HEAD
     char* re_msg=get_member(atoi(gid),CTRLGROUP);
 	if(NULL==re_msg)
 		return "FAULT";
 	else
 		return xml_compress(re_msg,1);
-=======
-    return get_member(atoi(gid),CTRLGROUP);
->>>>>>> origin/master
 }
 
 char* SetShield(char* loginer,char* context)
@@ -189,11 +162,7 @@ char* SetShield(char* loginer,char* context)
     {
         return "FAULT";
     }
-<<<<<<< HEAD
     MSGROUPCTRL mgc={0};
-=======
-    MSGROUPCTRL mgc= {0};
->>>>>>> origin/master
     strcpy(mgc.uid,loginer);
     mgc.gid=gid;
     mgc.opertype=type;
@@ -205,77 +174,48 @@ char* SetShield(char* loginer,char* context)
 
 char* GetGroup(char* loginer)
 {
-<<<<<<< HEAD
     char* result=get_group_or_mutil(loginer,CTRLGROUP);
     if(NULL==result)
         return "FAULT";
 	else
 		return xml_compress(result,1);
-=======
-    char* result=NULL;
-    result=get_group_or_mutil(loginer,CTRLGROUP);
-
-    if(result==NULL)
-        return "FAULT";
-    return result;
->>>>>>> origin/master
 }
 
 char* GetAvatar(char* orger)
 {
-<<<<<<< HEAD
     char* photo=get_photo(orger);
 	if(NULL==photo)
 		return "FAULT";
 	else
 		return photo;
     //return get_photo(orger);
-=======
-    return get_photo(orger);
->>>>>>> origin/master
 }
 
 char* GetOrger_Msg(char* orger)
 {
-<<<<<<< HEAD
     char* result=get_info(orger);
 	if(NULL==result)
 		return "FAULT";
 	else
 		return xml_compress(result,1);
-=======
-    return get_info(orger);
->>>>>>> origin/master
 }
 
 char* GetMultiplayer(char* mid)
 {
-<<<<<<< HEAD
     char* re_msg=get_member(atoi(mid),CTRLMUTIL);
 	if(NULL==re_msg)
 		return "FAULT";
 	else
 		return xml_compress(re_msg,1);
-=======
-    return get_member(atoi(mid),CTRLMUTIL);
->>>>>>> origin/master
 }
 
 char* GetMulti(char* loginer)
 {
-<<<<<<< HEAD
     char* result=get_group_or_mutil(loginer,CTRLMUTIL);
     if(NULL==result)
         return "FAULT";
 	else
 		return xml_compress(result,1);
-=======
-    char* result=NULL;
-    result=get_group_or_mutil(loginer,CTRLMUTIL);
-    if(result==NULL)
-        return "FAULT";
-    return result;
->>>>>>> origin/master
 }
 
 char* NewGroup(char* loginer,char* context)
@@ -291,11 +231,6 @@ char* NewGroup(char* loginer,char* context)
 	strcpy(mr.uid,loginer);
     if(insert_group(loginer,name,theme,id,&mr.gid,CTRLGROUP)==-1) //数据库操作
 	{
-<<<<<<< HEAD
-		//printf("insert_group error\n");
-=======
-		printf("insert_group error\n");
->>>>>>> origin/master
 		return "FAULT";
 	}
     if(MI_Write((char*)&mr,sizeof(MSGROUP),1)<0)
@@ -405,7 +340,7 @@ char* ExitGroup(char* loginer,char* gid)
     mg.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_DELUSER, REQUEST, NONE,sizeof(MSGROUP));
     if(MI_Write((char*)&mg,sizeof(MSGROUP),1)<0)
         return "FAULT";
-    return "OK";
+    return  GetGroup(loginer);
 }
 
 char* ExitMulti(char* loginer,char* mid)
@@ -419,13 +354,12 @@ char* ExitMulti(char* loginer,char* mid)
     mg.bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_DELUSER, REQUEST, NONE,sizeof(MSGROUP));
     if(MI_Write((char*)&mg,sizeof(MSGROUP),1)<0)
         return "FAULT";
-    return "OK";
+    return GetMulti(loginer);
 }
 
 char* GetPicture(char* pid)
 {
     int mpid;
-<<<<<<< HEAD
 	static pthread_mutex_t pmt=PTHREAD_MUTEX_INITIALIZER;
     char ext[16]= {0};
 	uint8_t* pic=NULL;
@@ -439,12 +373,6 @@ char* GetPicture(char* pid)
 		return "FAULT";
 	else
 		return pic;
-=======
-    char ext[16]= {0};
-    if(sscanf(pid,"%d.%s",&mpid,ext)==2)
-        return get_picture(mpid,ext);
-    return "FAULT";
->>>>>>> origin/master
 }
 
 char* Talk(int type,char* src,char* des,char* context,uint32_t llen)
@@ -493,24 +421,19 @@ char* UpdateLoginerMsg(char* loginer,char* context)
     char Phone[48]= {0};
     char Mail[48]= {0};
     char Mood[384]= {0};
-    char* data=UrlDecode(context);
-    sscanf(data,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
-    free(data);
+    //char* data=UrlDecode(context);
+    //sscanf(data,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
+    //free(data);
+	sscanf(context,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
     if(update_org_info(loginer,Phone,Mobile,Mail,Mood)==-1)
 		return "FAULT";
     MS32CHARINFO ms32= {0};
-<<<<<<< HEAD
 	strcpy(ms32.id,loginer);
     ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_BASEINFO, REQUEST, NONE,32);
     if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
         return "FAULT";
 	ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_MOOD, REQUEST, NONE,32);
 	if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
-=======
-    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_BASEINFO, REQUEST, NONE,32);
-    strcpy(ms32.id,loginer);
-    if(MI_Write((char*)&ms32,sizeof(BsnsPacket),1)<0)
->>>>>>> origin/master
         return "FAULT";
     return "OK";
 }

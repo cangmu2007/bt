@@ -195,11 +195,7 @@ int insert_point(UL head,char* loginer,int fd)  //用户在线链表增加节点
     {
         if(0==strcmp(q->next->id,loginer))   //已经在线
 		{
-<<<<<<< HEAD
 			ret=1;
-=======
-			ret=-1;
->>>>>>> origin/master
             break;
 		}
         q=q->next;
@@ -264,12 +260,8 @@ void flush_list(UL head)
         memset(temp,0,48);
         p=p->next;
     }
-<<<<<<< HEAD
     list=(char*)realloc(list,len+10);
 	memset(list+len,0,10);
-=======
-    list=(char*)realloc(list,len+9);
->>>>>>> origin/master
     strcpy(list+len,"</online>");
     pthread_mutex_lock(&mutex_ol);  //上锁
     if(NULL!=MO_OL)

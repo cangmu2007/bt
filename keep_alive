@@ -8,6 +8,6 @@ do
 sleep 30
 stillRunning=$(ps -ef | grep -w $ProcName | grep -v grep)
 if [ ! "$stillRunning" ];then
-	$bin_path/bin/$ProcName /$bin_path/etc/beetalk.conf &
+	$bin_path/bin/$ProcName /$bin_path/etc/beetalk.conf
 fi
 done

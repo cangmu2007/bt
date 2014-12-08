@@ -7,19 +7,20 @@ void setnonblocking(int sock)
     if(opts<0)
     {
         perror("fcntl(sock,GETFL)");
+		writelog("fcntl(sock,GETFL");
         exit(-1);
     }
     opts = opts|O_NONBLOCK;
     if(fcntl(sock,F_SETFL,opts)<0)
     {
         perror("fcntl(sock,SETFL,opts)");
+		writelog("fcntl(sock,SETFL,opts)");
         exit(-1);
     }
 }
 
 void* CGI_Link(void* nfd)   //CGI连接处理
 {
-<<<<<<< HEAD
 	pthread_detach(pthread_self()); //分离线程
     int fd=(*(int*)nfd);
     uint size=0;
@@ -28,6 +29,7 @@ void* CGI_Link(void* nfd)   //CGI连接处理
 	if(ret!=sizeof(uint32_t)||size==0)
     {
         perror("CGI recv2");
+		writelog("CGI recv2");
     }
 	else
 	{
@@ -36,6 +38,7 @@ void* CGI_Link(void* nfd)   //CGI连接处理
 		if(NULL==rbuf)
 		{
 			 perror("CGI malloc");
+			 writelog("CGI malloc");
 			 goto _re;
 		}
         memset(rbuf,0,leftsize);
@@ -49,53 +52,24 @@ void* CGI_Link(void* nfd)   //CGI连接处理
 				if(EAGAIN!=errno)	//如果出现EAGAIN，则忽略
 				{
 					perror("CGI recv3");
+					writelog("CGI recv3");
 					break;
 				}
-=======
-    pthread_detach(pthread_self()); //分离线程
-    int fd=(*(int*)nfd);
-    int size=-1;
-    int temp=-1;
-    int leftsize=-1;
-    int ret=-1;
-    if(recv(fd,(char*)&size,sizeof(uint32_t),0)<0)
-    {
-        perror("CGI recv2");
-    }
-    else
-    {
-        int leftsize = sizeof(char) * (size - sizeof(uint32_t));
-        char *rbuf = (char *)malloc(leftsize);
-        memset(rbuf,0,leftsize);
-		uint recv_count=0;
-		while(recv_count<leftsize)
-		{
-			ret=recv(fd,rbuf+recv_count,leftsize-recv_count,0);
-			if(ret==-1)
-			{
-				perror("CGI recv2");
->>>>>>> origin/master
 			}else if(ret==0)
 			{
 				break;
 			}else
 				recv_count+=ret;
 		}
-<<<<<<< HEAD
         if(recv_count<leftsize)	//长度不对
         {
 			free(rbuf);
-            printf("CGI recv2 error!\n");
-=======
-        if(recv_count<=0)
-        {
-            perror("CGI recv2");
->>>>>>> origin/master
+            printf("CGI recv error!\n");
+			writelog("CGI recv error");
         }
         else
         {
             CM cgi_pk=(CM)malloc(sizeof(char) * size);
-<<<<<<< HEAD
 			if(NULL==cgi_pk)
 			{
 				free(rbuf);
@@ -110,49 +84,14 @@ void* CGI_Link(void* nfd)   //CGI连接处理
             CRM crm=Business_deal(cgi_pk,fd);	//实际业务处理
             //pthread_mutex_unlock(&mutex_sql);
             if((0==cgi_pk->type))	//0是特殊业务，需特殊处理
-=======
-            cgi_pk->packet_len=size;
-            memcpy((char*)(&cgi_pk->type), rbuf, leftsize);
-            free(rbuf);
-
-            /*if(0==cgi_pk->type)
-            {
-                UL ul=get_point(user,cgi_pk->sender);
-                if(NULL!=ul)
-                {
-                    if(ul->time>0)
-                    {
-                        //printf("close pthread_t %ld\n",ul->time);                       
-						//for(;;)
-						//{
-							pthread_cancel(ul->time);
-							//usleep(300);    //等待线程结束
-                    //kill=pthread_kill(ul->time,0);
-                    //if(ESRCH!=kill&&EINVAL==kill)
-                       // break;                
-               // }
-                    }
-                }
-            }*/
-
-            //pthread_mutex_lock(&mutex_sql);
-            CRM crm=Business_deal(cgi_pk,fd);
-            //pthread_mutex_unlock(&mutex_sql);
-            if((0==cgi_pk->type))
->>>>>>> origin/master
             {
                 //服务器推送
                 ret=1;
                 free(cgi_pk);
-<<<<<<< HEAD
-=======
-                cgi_pk=NULL;
->>>>>>> origin/master
                 if(crm!=NULL)
                 {
                     Zero_RE(fd,crm->context,crm->len,1);
                     free(crm);
-<<<<<<< HEAD
                 }
                 pthread_exit((void*)&ret);
             }
@@ -160,6 +99,7 @@ void* CGI_Link(void* nfd)   //CGI连接处理
             if((ret=send(fd,(char*)crm,crm->len+sizeof(uint32_t),MSG_NOSIGNAL))<0)	//返回处理结果
             {
                 perror("CGI send");
+				writelog("CGI send");
             }
 			if(NULL!=crm)
 			{
@@ -169,23 +109,6 @@ void* CGI_Link(void* nfd)   //CGI连接处理
         }
     }
 _re:
-=======
-                    crm=NULL;
-                }
-                pthread_exit((void*)&ret);
-            }
-
-            free(cgi_pk);
-            cgi_pk=NULL;
-            if((ret=send(fd,(char*)crm,crm->len+sizeof(uint32_t),MSG_NOSIGNAL))<0)
-            {
-                perror("CGI send");
-            }
-            free(crm);
-            crm=NULL;
-        }
-    }
->>>>>>> origin/master
     close(fd);
     if(-1==ret)
         pthread_exit((void*)&ret);
@@ -227,6 +150,7 @@ int Zero_RE(int fd,char* context,int len,int type)
     if(ret=send(fd,(char*)crm,crm->len+sizeof(uint32_t),MSG_NOSIGNAL)<0)
     {
         perror("CGI re send");
+		writelog("CGI re send");
     }
     pthread_mutex_unlock(&mutex_cgi); //解锁
 
@@ -326,15 +250,11 @@ CRM Business_deal(CM cm,int fd)
                 if(text==NULL)
                     ul->flag=1;
             }
-<<<<<<< HEAD
 			if(NULL==text||0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
             break;
         case BUS_LOGIN:	//用户登录
             text=Login(cm->sender,cm->context);
@@ -357,48 +277,35 @@ CRM Business_deal(CM cm,int fd)
         case BUS_OL_MOBILE:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetMo_Ol();
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
-=======
->>>>>>> origin/master
             break;
         case BUS_OL_PC:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetPc_Ol();
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
-=======
->>>>>>> origin/master
             break;
         case BUS_ORG_STU:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetOrg_Stu();
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
-=======
->>>>>>> origin/master
             break;
         case BUS_GROUPER:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetGrouper(cm->context);
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
             break;
         case BUS_GROUP_SHIELD:
             if(NULL==(text=Check_Logined(cm->sender)))
@@ -407,15 +314,11 @@ CRM Business_deal(CM cm,int fd)
         case BUS_GROUP:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetGroup(cm->sender);
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
             break;
         case BUS_AVATAR:
             if(NULL==(text=Check_Logined(cm->sender)))
@@ -428,59 +331,47 @@ CRM Business_deal(CM cm,int fd)
         case BUS_LOGINER_MSG:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetOrger_Msg(cm->context);
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
             break;
         case BUS_MULTIPLAYER:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetMultiplayer(cm->context);
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
             break;
         case BUS_MULTI:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=GetMulti(cm->sender);
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
             break;
         case BUS_NEW_GROUP:
             if(NULL==(text=Check_Logined(cm->sender)))
                 text=NewGroup(cm->sender,cm->context);
-            flag=1;
-            break;
-        case BUS_NEW_MULTIPLAYER_SESSION:
-            if(NULL==(text=Check_Logined(cm->sender)))
-                text=NewMulti(cm->sender,cm->context);
-<<<<<<< HEAD
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
-=======
-            flag=1;
->>>>>>> origin/master
+            break;
+        case BUS_NEW_MULTIPLAYER_SESSION:
+            if(NULL==(text=Check_Logined(cm->sender)))
+                text=NewMulti(cm->sender,cm->context);
+			if(0==strcmp(text,"FAULT"))
+                flag=1;
+            else
+                flag=2;
+            //flag=1;
             break;
         case BUS_ADD_MULTIPLAYER_SESSION:
             text=AddMulti(cm->context);

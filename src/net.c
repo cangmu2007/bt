@@ -7,8 +7,17 @@ int Init_Mi_TCP(char* ip,int port)
 	if((mi_fd = socket(AF_INET,SOCK_STREAM,0))<0) //TCP的socket
     {
         perror("TCP mi socket");
+		writelog("TCP mi socket");
         return -1;
     }
+
+	int keepIdle = 1000;
+	int keepInterval = 30;
+	int keepCount = 10;
+
+	setsockopt(mi_fd, SOL_TCP, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle));
+	setsockopt(mi_fd, SOL_TCP,TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval));
+	setsockopt(mi_fd,SOL_TCP, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount));
 
 	struct sockaddr_in MI_addr;
     memset(&MI_addr, 0,sizeof(MI_addr));    //TCP连接地址
@@ -19,30 +28,37 @@ int Init_Mi_TCP(char* ip,int port)
     if(connect(mi_fd, (struct sockaddr *)&(MI_addr), sizeof(MI_addr))<0) //连接中间件
     {
         perror("TCP mi connect");
+		writelog("TCP mi connect");
+		close(mi_fd);
+		mi_fd=-1;
         return -1;
     }
 
     if(pthread_mutex_init(&mutex_ol,NULL)<0)    //初始化互斥锁
     {
         printf("pthread_mutex_init ol error\n");
+		writelog("pthread_mutex_init ol error");
         return -1;
     }
 
 	if(pthread_mutex_init(&mutex,NULL)<0) //初始化互斥锁
     {
         printf("pthread_mutex_init mi error\n");
+		writelog("pthread_mutex_init mi error");
         return -1;
     }
 
     if(sem_init(&mi_send_recv_ctrl, 0, 1)<0)
     {
         perror("sem_init");
+		writelog("sem_init");
         return -1;
     }
 
     if(pthread_create(&rad_thread, NULL, (void*)MI_Read, NULL)<0)   //创建接收线程
     {
         printf("pthread_create recv\n");
+		writelog("pthread_create recv\n");
         return -1;
     }
     usleep(500);
@@ -50,7 +66,9 @@ int Init_Mi_TCP(char* ip,int port)
     if(Link_Mi()<0)
     {
         printf("Failed to connect Middleware\n");
+		writelog("Failed to connect Middleware");
         close(mi_fd);
+		mi_fd=-1;
         return -1;
     }
     sem_wait(&mi_send_recv_ctrl);
@@ -58,6 +76,7 @@ int Init_Mi_TCP(char* ip,int port)
     if(Send_MO_OL()<0)
     {
         printf("Failed to send MO_OL to MI\n");
+		writelog("Failed to send MO_OL to MI");
 		return -1;
     }
     sem_wait(&mi_send_recv_ctrl);
@@ -65,6 +84,7 @@ int Init_Mi_TCP(char* ip,int port)
     if(SEND_GET_PC_ONLINE_LIST()<0)
     {
         printf("Failed to Requested PC_OL\n");
+		writelog("Failed to Requested PC_OL");
 		return -1;
     }
 	return 0;
@@ -75,29 +95,34 @@ int Exit_Mi_TCP()
 	if(pthread_cancel(rad_thread)<0)  //关闭中间件读线程
     {
         printf("pthread_cancle recv\n");
+		writelog("pthread_cancle recv");
         return -1;
     }
     if(pthread_join(rad_thread,NULL)<0) //阻塞主线程
     {
         printf("pthread_join recv\n");
+		writelog("pthread_cancle recv");
         return -1;
     }
 
     if(pthread_mutex_destroy(&mutex_ol)<0)  //销毁互斥锁
     {
-        printf("pthread_mutex_destroy(ol)");
+        printf("pthread_mutex_destroy(ol)\n");
+		writelog("pthread_mutex_destroy(ol)");
         return -1;
     }
 
     if(pthread_mutex_destroy(&mutex)<0) //销毁发送端互斥锁
     {
-        printf("pthread_mutex_destroy(mi)");
+        printf("pthread_mutex_destroy(mi)\n");
+		writelog("pthread_mutex_destroy(mi)");
         return -1;
     }
 
     if(sem_destroy(&mi_send_recv_ctrl)<0)
     {
         perror("sem_destroy");
+		writelog("sem_destroy");
         return -1;
     }
 
@@ -118,13 +143,11 @@ int MI_Write(const char *bsnsdata, int len,int flag)
     char temp[DATA_BUF_LEN]= {0};
     memset(temp,0,DATA_BUF_LEN);
     TsPt transpacket=(TsPt)malloc(sizeof(TransPacket));
-<<<<<<< HEAD
 	memset(transpacket,0,sizeof(TransPacket));
-=======
->>>>>>> origin/master
     if(NULL==transpacket)
     {
         perror("malloc error");
+		writelog("malloc error");
         return -1;
     }
     transpacket->Count = nCount;
@@ -150,6 +173,7 @@ int MI_Write(const char *bsnsdata, int len,int flag)
             if(-1 == num)
             {
 				perror("TCP send");
+				writelog("TCP send");
                 break;
             }
             else
@@ -162,15 +186,10 @@ int MI_Write(const char *bsnsdata, int len,int flag)
             break;
         }
     }
-<<<<<<< HEAD
 	free(transpacket);
-=======
->>>>>>> origin/master
 	if(num==-1&&flag==1)
 	{
-		Exit_Mi_TCP();
-		sleep(3);
-		Init_Mi_TCP(MI_ADDR,MI_PORT);
+		ReLink_mi(NULL);
 		num=MI_Write(bsnsdata,len,0);
 	}
     pthread_mutex_unlock(&mutex);   //解锁
@@ -200,6 +219,7 @@ void* MI_Read(void* args)   //TCP接收并做相应处理
             if(num <= 0)
             {
                 perror("TCP recv");
+				writelog("TCP recv");
                 ret = -1;
                 break;
             }
@@ -222,6 +242,7 @@ void* MI_Read(void* args)   //TCP接收并做相应处理
             if(num <= 0)
             {
                 perror("TCP recv");
+				writelog("TCP recv");
                 ret = -1;
                 break;
             }
@@ -253,13 +274,25 @@ void* MI_Read(void* args)   //TCP接收并做相应处理
     }
     if(-1==ret)
     {
+		pthread_t tid;
+		if(pthread_create(&tid,NULL,(void*)ReLink_mi,NULL)<0)
+		{
+			printf("ReLink_mi error\n");
+			writelog("ReLink_mi error");
+		}
         pthread_exit((void*)&ret);  //出错关闭线程并返回-1
     }
 }
 
+void* ReLink_mi(void* arg)
+{
+	Exit_Mi_TCP();
+	sleep(3);
+	Init_Mi_TCP(MI_ADDR,MI_PORT);
+}
+
 void HandleBusiness(BsPt pBsns, const char *data, uint len)
 {
-    // 先解密
     uint srclen = pBsns->Srclen;
     char *srcdata = NULL;
     switch (pBsns->Command)
@@ -271,23 +304,25 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
             OnMiddleSchema(pBsns->Result);
             break;
         case MC_EXTAPP_GETONLINELIST:
-<<<<<<< HEAD
             srcdata=(char*)malloc(srclen+1);
 			memset(srcdata,0,srclen+1);
-=======
-            srcdata=(char*)malloc(srclen);
->>>>>>> origin/master
             memcpy(srcdata,data,srclen);
             OnGetOnlineList(pBsns->Result, srcdata, srclen);
             free(srcdata);
             break;
         case MC_BTPC_LOGIN:
             if(SEND_GET_PC_ONLINE_LIST()<0)
+			{
                 printf("Failed to Requested PC_OL\n");
+				writelog("Failed to Requested PC_OL");
+			}
             break;
         case MC_BTPC_LOGOUT:
             if(SEND_GET_PC_ONLINE_LIST()<0)
+			{
                 printf("Failed to Requested PC_OL\n");
+				writelog("Failed to Requested PC_OL");
+			}
             break;
         case MC_BTPC_CTM_BASEINFO:
             MSG_INFO(pBsns->Result,CTRLPERSON);
@@ -296,38 +331,23 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
             break;
         case MC_BTPC_GROUP_NOTICE:
             break;
-<<<<<<< HEAD
         case MC_BTPC_PTOP_MSG:
 			srcdata=(char*)malloc(srclen+1);
 			memset(srcdata,0,srclen+1);
-=======
-        case MC_BTPC_MULTI_SUBJECT:
-            break;
-        case MC_BTPC_PTOP_MSG:
-            srcdata=(char*)malloc(srclen);
->>>>>>> origin/master
             memcpy(srcdata,data,srclen);
             MSG_RECV(pBsns->Result, srcdata, srclen,CTRLPERSON);
             free(srcdata);
             break;
         case MC_BTPC_GROUP_MSG:
-<<<<<<< HEAD
             srcdata=(char*)malloc(srclen+1);
 			memset(srcdata,0,srclen+1);
-=======
-            srcdata=(char*)malloc(srclen);
->>>>>>> origin/master
             memcpy(srcdata,data,srclen);
             MSG_RECV(pBsns->Result, srcdata, srclen,CTRLGROUP);
             free(srcdata);
             break;
         case MC_BTPC_MULTI_MSG:
-<<<<<<< HEAD
             srcdata=(char*)malloc(srclen+1);
 			memset(srcdata,0,srclen+1);
-=======
-            srcdata=(char*)malloc(srclen);
->>>>>>> origin/master
             memcpy(srcdata,data,srclen);
             MSG_RECV(pBsns->Result, srcdata, srclen,CTRLMUTIL);
             free(srcdata);
@@ -344,12 +364,9 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
         case MC_BTPC_MULTI_DELUSER:
             MSG_INFO(pBsns->Result,CTRLMUTIL);
             break;
-<<<<<<< HEAD
 		case MC_BTPC_MULTI_SUBJECT:
             MSG_INFO(pBsns->Result,CTRLMUTIL);
             break;
-=======
->>>>>>> origin/master
         default:
             break;
     }

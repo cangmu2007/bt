@@ -44,8 +44,20 @@ int main(int argc, char *argv[])
 
 	MAX_CGI_LINK=cfg_getnum(cfg,"CGI_SET.MAX_CGI_LINK");   //CGI最大连接数
 	UNIX_PATH=cfg_getstr(cfg,"CGI_SET.UNIX_PATH");    //域套接字连接符路径(用户必须设置有读写权限的目录内，套接口的名称必须符合文件名命名规则且不能有后缀，该变量和CGI头文件中的同名宏必须相同)
+	LOG_PATH=cfg_getstr(cfg,"CGI_SET.LOG_PATH");	//日志路径
 
-    user=(UL)malloc(sizeof(User_Linking));  //初始化用户链表
+	if(daemon(1, 1) < 0)  
+    {  
+        perror("error daemon"); 
+        exit(-1);  
+    }
+
+	if(openlog(LOG_PATH)<0)	//打开日志
+	{
+		exit(-1);
+	}
+	
+	user=(UL)malloc(sizeof(User_Linking));  //初始化用户链表
     user->next=NULL;
     org_stu=NULL;   //初始化组织结构
     tmp_stu=NULL;
@@ -69,6 +81,7 @@ int main(int argc, char *argv[])
 	if(DbprocInit(SQL_LINK_COUNT)<0)	//连接数据库
 	{
 		printf("DbprocInit error\n");
+		writelog("DbprocInit error");
 		exit(-1);
 	}
 
@@ -76,6 +89,7 @@ int main(int argc, char *argv[])
 	if(SQL_LINK_COUNT<=0)
 	{
 		printf("Could not establish connection\n");
+		writelog("Could not establish connection");
         exit(-1);
 	}
 
@@ -94,6 +108,13 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
+	if(pthread_create(&check_mi,NULL,(void*)CHECK_MI_LINK,NULL)<0)
+	{
+		printf("pthread_create check_mi_link error\n");
+		writelog("pthread_create check_mi_link error");
+		exit(-1);
+	}
+
     /*************************************************************************************************************/
 
     /**********************************CGI的域套接字初始化************************/
@@ -101,27 +122,26 @@ int main(int argc, char *argv[])
 	if(pthread_mutex_init(&mutex_cgi,NULL)<0) //初始化互斥锁
     {
         printf("pthread_mutex_init cgi error\n");
+		writelog("pthread_mutex_init cgi error");
         exit(-1);
     }
 
     if((cgi_fd = socket(PF_UNIX,SOCK_STREAM,0))<0)  //域套接字的socket
     {
         perror("TCP cgi socket");
+		writelog("TCP cgi socket");
         exit(-1);
     }
 	setnonblocking(cgi_fd);
 
     /*************************************epoll方法定义，windows下不支持**********************/
 #ifdef LINUX   
-<<<<<<< HEAD
     struct epoll_event ev={0},events[20];
-=======
-    struct epoll_event ev,events[20];
->>>>>>> origin/master
     int epfd=epoll_create1(0);
     if(-1==epfd)
     {
         perror("epoll_create1 error");
+		writelog("epoll_create1 error");
         exit(-1);
     }
     ev.data.fd=cgi_fd;
@@ -129,6 +149,7 @@ int main(int argc, char *argv[])
     if(epoll_ctl(epfd, EPOLL_CTL_ADD, cgi_fd, &ev)<0)
     {
         perror("epoll_ctl error");
+		writelog("epoll_ctl error");
         exit(-1);
     }
     int nfds=-1;
@@ -159,18 +180,21 @@ int main(int argc, char *argv[])
     if(bind(cgi_fd, (struct sockaddr *)&cgi_addr, sizeof(struct sockaddr_un))<0)
     {
         perror("TCP cgi bind");
+		writelog("TCP cgi bind");
         exit(-1);
     }
 
     if(chmod(UNIX_PATH,0777)<0) //写域套接字的权限
     {
-        perror("chmod()");
+        perror("chmod");
+		writelog("chmod");
         exit(-1);
     }
 
     if(listen(cgi_fd, MAX_CGI_LINK)<0)
     {
         perror("TCP cgi listen");
+		writelog("TCP cgi listen");
         exit(-1);
     }
 
@@ -179,20 +203,24 @@ int main(int argc, char *argv[])
     if(pthread_create(&timer, NULL, (void*)Flush_CGI, NULL)<0)  //创建保活线程
     {
         printf("pthread_create timer\n");
+		writelog("pthread_create timer");
         exit(-1);
     }
 
     printf("Initialization is ready, start listening now connect business users......\n");
+
+	writelog("btserver start");
     for(;;)
     {
         /*************************epoll方法，需要Linux2.6.18以上支持*************/
 #ifdef LINUX
         if((nfds=epoll_wait(epfd,events,num,-1))<0)
         {
-            if(errno==EINTR)    //调试时使用，调试结束后必须注释
-                continue;
+            //if(errno==EINTR)    //调试时使用，调试结束后必须注释
+                //continue;
 
             perror("epoll_wait error");
+			writelog("epoll_wait error");
             exit(-1);
         }
 
@@ -203,6 +231,7 @@ int main(int argc, char *argv[])
                 if((new_fd=accept(cgi_fd, NULL, NULL))<0)
                 {
                     perror("TCP cgi accept");
+					writelog("TCP cgi accept error");
 
                     //重建CGI域套接字
                     close(cgi_fd);
@@ -210,6 +239,7 @@ int main(int argc, char *argv[])
                     if((cgi_fd = socket(PF_UNIX,SOCK_STREAM,0))<0)  //域套接字的socket
                     {
                         perror("TCP cgi resocket");
+						writelog("TCP cgi resocket");
                         break;
                     }
 
@@ -224,18 +254,21 @@ int main(int argc, char *argv[])
                     if(bind(cgi_fd, (struct sockaddr *)&cgi_addr, sizeof(struct sockaddr_un))<0)
                     {
                         perror("TCP cgi rebind");
+						writelog("TCP cgi rebind");
                         break;
                     }
 
                     if(chmod(UNIX_PATH,0777)<0)
                     {
-                        perror("chmod() error");
+                        perror("chmod error");
+						writelog("chmod error");
                         exit(-1);
                     }
 
                     if(listen(cgi_fd, MAX_CGI_LINK)<0)
                     {
                         perror("TCP cgi relisten");
+						writelog("TCP cgi relisten");
                         break;
                     }
 
@@ -258,6 +291,7 @@ int main(int argc, char *argv[])
                 if(pthread_create(&tid,NULL,(void*)CGI_Link,(void*)(&events[i].data.fd))<0)
                 {
                     perror("pthread_create epoll");
+					writelog("pthread_create epoll");
                     close(events[i].data.fd);
                 }
                 epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
@@ -274,6 +308,7 @@ int main(int argc, char *argv[])
 		if(poll(master, num, -1) < 0)
 		{
 			perror("poll error");
+			writelog("poll error");
 			exit(-1);
 		}
 		if(master[0].revents & POLLIN)
@@ -281,6 +316,7 @@ int main(int argc, char *argv[])
 			if((new_fd = accept(cgi_fd, NULL, NULL))<0)
 			{
 				perror("TCP cgi accept");
+				writelog("TCP cgi accept");
 
                 //重建CGI域套接字
                 close(cgi_fd);
@@ -288,6 +324,7 @@ int main(int argc, char *argv[])
                 if((cgi_fd = socket(PF_UNIX,SOCK_STREAM,0))<0)  //域套接字的socket
                 {
                     perror("TCP cgi resocket");
+					writelog("TCP cgi resocket");
                     break;
                 }
 
@@ -300,18 +337,21 @@ int main(int argc, char *argv[])
                 if(bind(cgi_fd, (struct sockaddr *)&cgi_addr, sizeof(struct sockaddr_un))<0)
                 {
                     perror("TCP cgi rebind");
+					writelog("TCP cgi rebind");
                     break;
                 }
 
                 if(chmod(UNIX_PATH,0777)<0)
                 {
-                    perror("chmod() error");
+                    perror("chmod error");
+					writelog("chmod error");
                     exit(-1);
                 }
 
                 if(listen(cgi_fd, MAX_CGI_LINK)<0)
                 {
                     perror("TCP cgi relisten");
+					writelog("TCP cgi relisten");
                     break;
                 }
 
@@ -343,7 +383,8 @@ int main(int argc, char *argv[])
 				master[i].fd=-1;
 				if(pthread_create(&tid,NULL,(void*)CGI_Link,(void*)(&tfd))<0)
 				{
-					perror("pthread_create select");
+					perror("pthread_create poll");
+					writelog("pthread_create poll");
 					close(tfd);
 				}
 				num--;
@@ -354,9 +395,24 @@ int main(int argc, char *argv[])
 
     Exit_Mi_TCP();
 
+	if(pthread_cancel(check_mi)<0)  //关闭中间件检查线程
+    {
+        printf("pthread_cancle check_mi\n");
+		writelog("pthread_cancle check_mi");
+        return -1;
+    }
+
+	if(pthread_join(check_mi,NULL)<0) //阻塞主线程
+    {
+        printf("pthread_join check_mi\n");
+		writelog("pthread_join check_mi");
+        return -1;
+    }
+
 	if(pthread_mutex_destroy(&mutex_cgi)<0)  //销毁互斥锁
     {
         printf("pthread_mutex_destroy(ol)");
+		writelog("pthread_mutex_destroy(ol)");
         exit(-1);
     }
 
@@ -368,5 +424,6 @@ int main(int argc, char *argv[])
 
 	CloseConnection(dph);	//断开数据库
     //CloseConnection();  //断开数据库
+	closelog();
     return 0;
 }

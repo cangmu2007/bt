@@ -12,7 +12,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <semaphore.h>
+#include <netinet/tcp.h>
 #include "freetdstodb.h"
+#include "log.h"
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -366,6 +368,7 @@ int cgi_fd; //CGI域套接字服务端文件描述符
 UL user;    //用户在线链表
 sem_t mi_send_recv_ctrl;    //中间件启动连接控制
 pthread_t rad_thread;	//中间件接收线程
+pthread_t check_mi;	//用于定时检查中间件连接正常的线程
 
 char* org_stu;  //组织结构
 char* tmp_stu;  //临时组织结构缓存区
@@ -389,6 +392,7 @@ uint SQL_LINK_COUNT;	//数据库连接池
 //CGI通信
 int MAX_CGI_LINK;   //CGI最大连接数
 char* UNIX_PATH;    //域套接字连接符路径(用户必须设置有读写权限的目录内，套接口的名称必须符合文件名命名规则且不能有后缀，该变量和CGI头文件中的同名宏必须相同)
+char* LOG_PATH;	//日志路径
 
 //中间件通信
 int MI_PORT;    //中间件端口
@@ -404,6 +408,7 @@ int Exit_Mi_TCP(); //销毁中间件连接
 void* MI_Read(void* args);  //中间件接收线程
 int MI_Write(const char *bsnsdata, int len,int flag);    //与中间件交互的业务包发送函数
 void HandleBusiness(BsPt pBsns, const char *data, uint len);  // 与中间件交互的业务数据处理函数
+void* ReLink_mi(void* arg);	//重连中间件
 
 /*****************************************************************************************/
 
@@ -473,6 +478,7 @@ int SEND_GET_PC_ONLINE_LIST();  //获取PC端在线成员列表
 void OnMiddleLogin(unsigned char result);   //程序登录中间件
 void OnMiddleSchema(unsigned char result);  //向中间件发送请求,请求PC在线列表
 int Send_MO_OL();   //发送移动端在线列表
+void* CHECK_MI_LINK(void* arg);	//检查中间件连接状态线程
 
 /***************************************************************************************/
 

@@ -16,6 +16,8 @@ void OnMiddleSchema(unsigned char result)
     }
 }
 
+static int check_tcp=0;	//获取组织结构标识位
+
 void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
 {
     uint len=srclen-2*sizeof(uint32_t);
@@ -32,7 +34,9 @@ void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
         free(PC_OL);
     PC_OL=rx;
 
+	check_tcp=0;
 	printf("Flash PC_OL\n");
+	writelog("Flash PC_OL");
 
 	/*不再立刻通知客户端10-10
     UL p=user->next;
@@ -62,7 +66,7 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
     switch(type)
     {
         case CTRLPERSON:
-            ms64=(RMS64_CHARINFO)malloc(sizeof(RMS64CHARINFO));
+            ms64=(RMS64_CHARINFO)malloc(srclen);
             memcpy(ms64,srcdata,srclen);
             context=search_info(ms64->desid,CTRLPERSON);
             ul=get_point(user,ms64->desid);
@@ -79,14 +83,14 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
             free(ms64);
             break;
         case CTRLGROUP:
-            mg=(RMS_GROUP)malloc(sizeof(RMSGROUP));
+            mg=(RMS_GROUP)malloc(srclen);
             memcpy(mg,srcdata,srclen);
             //每个用户都发
             ret=get_group_mutil_user(mg->uid,mg->gid,CTRLGROUP);
             free(mg);
             break;
         case CTRLMUTIL:
-            mg=(RMS_GROUP)malloc(sizeof(RMSGROUP));
+            mg=(RMS_GROUP)malloc(srclen);
             memcpy(mg,srcdata,srclen);
             //每个用户都发
             ret=get_group_mutil_user(mg->uid,mg->gid,CTRLMUTIL);
@@ -158,7 +162,27 @@ int SEND_GET_PC_ONLINE_LIST()
     MSEXTAPPREG_REQ mc= {0};
     mc.bp=BsnsPacket_init(MC_EXTAPP_GETONLINELIST, REQUEST, NONE,sizeof(uint32_t));
     mc.ntype=EAT_BTPCINSTANT;
-    return MI_Write((char*)&mc,sizeof(MSEXTAPPREG_REQ),1);
+	int ret=MI_Write((char*)&mc,sizeof(MSEXTAPPREG_REQ),1);
+	if(ret!=-1)
+		check_tcp=1;
+	return ret;
+}
+
+void* CHECK_MI_LINK(void* arg)
+{
+	int time=0;
+	for(;;)
+	{
+		sleep(240);
+		if(check_tcp==1)
+		{
+			time++;
+			if(time%2==0)
+			{
+				ReLink_mi(NULL);
+			}
+		}
+	}
 }
 
 char Char2Int(char ch)

@@ -11,7 +11,7 @@ start_PROC()
 	else
 		echo "start btserver"
 		export LD_LIBRARY_PATH=$bin_path/lib:$LD_LIBRARY_PATH
-		$bin_path/bin/$PROC_NAME $bin_path/etc/beetalk.conf &
+		$bin_path/bin/$PROC_NAME $bin_path/etc/beetalk.conf
 		start_SCRIPT
 	fi
 }
@@ -37,6 +37,7 @@ stop_PROC()
 		if kill -9 $(ps -ef | grep -w $PROC_NAME | grep -v grep | awk '{print $2}')
 			then
 			echo "btserver process killed [OK]"
+			num=0;
 		else
 			echo "btserver process kill error [failed]"
 		fi
@@ -55,6 +56,7 @@ stop_SCRIPT()
 		then
 			echo "keep_alive process killed [OK]"
 			rm /tmp/bttmp
+			ret=0;
 		else
 			echo "keep_alive process kill error [failed]"
 		fi
@@ -99,10 +101,7 @@ stop)
 	;;
 restart)
 	stop_PROC
-<<<<<<< HEAD
 	sleep 3
-=======
->>>>>>> origin/master
 	start_PROC
 	;;
 check)

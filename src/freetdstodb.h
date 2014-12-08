@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <error.h>
+#include "log.h"
 
 #define TAIL " set quoted_identifier on set ansi_warnings on set ansi_padding on set ansi_nulls on set concat_null_yields_null on"
 
