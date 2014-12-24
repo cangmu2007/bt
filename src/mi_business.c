@@ -107,13 +107,13 @@ void MSG_INFO(unsigned char Result,int type)
     switch(type)
     {
         case CTRLPERSON:
-            context="5";
+            context="update 5";
             break;
         case CTRLGROUP:
-            context="8";
+            context="update 8";
             break;
         case CTRLMUTIL:
-            context="12";
+            context="update 12";
             break;
     }
     UL p=user->next;
@@ -121,9 +121,10 @@ void MSG_INFO(unsigned char Result,int type)
     {
         if(p->fd!=-1)
         {
+			len=strlen(context);
             if(p->flag==1)
             {
-                Zero_RE(p->fd,context,(len=strlen(context)),1);
+                Zero_RE(p->fd,context,len,1);
                 p->flag=0;
             }
             else
@@ -135,11 +136,10 @@ void MSG_INFO(unsigned char Result,int type)
 
 int Link_Mi()
 {
-    int ret=0;
-    MSEXTAPPREG_REQ reg_req= {0};
+    MSEXTAPPREG_REQ reg_req={0};
     reg_req.bp=BsnsPacket_init(MC_EXTAPP_CONN, REQUEST, NONE,sizeof(uint32_t));
     reg_req.ntype=EAT_BTANDRIOD;
-    return MI_Write((char*)&reg_req,sizeof(MSEXTAPPREG_REQ),1);
+    return MI_Write((char*)&reg_req,sizeof(MSEXTAPPREG_REQ),0);
 }
 
 int Send_MO_OL()
@@ -152,7 +152,7 @@ int Send_MO_OL()
     memcpy(sendol->context,MO_OL,len-1);
     sendol->bp=BsnsPacket_init(MC_EXTAPP_SCHEMA, REQUEST,NONE, sizeof(uint32_t)+len-1);
     sendol->ntype=EAT_BTANDRIOD;
-    ret=MI_Write((char*)sendol,sizeof(MSEXTAPPREG_REQ)+len-1,1);
+    ret=MI_Write((char*)sendol,sizeof(MSEXTAPPREG_REQ)+len-1,0);
     free(sendol);
     return ret;
 }
@@ -162,7 +162,7 @@ int SEND_GET_PC_ONLINE_LIST()
     MSEXTAPPREG_REQ mc= {0};
     mc.bp=BsnsPacket_init(MC_EXTAPP_GETONLINELIST, REQUEST, NONE,sizeof(uint32_t));
     mc.ntype=EAT_BTPCINSTANT;
-	int ret=MI_Write((char*)&mc,sizeof(MSEXTAPPREG_REQ),1);
+	int ret=MI_Write((char*)&mc,sizeof(MSEXTAPPREG_REQ),0);
 	if(ret!=-1)
 		check_tcp=1;
 	return ret;
@@ -170,22 +170,27 @@ int SEND_GET_PC_ONLINE_LIST()
 
 void* CHECK_MI_LINK(void* arg)
 {
+	pthread_detach(pthread_self()); //·ÖÀëÏß³Ì
 	int time=0;
 	for(;;)
 	{
 		sleep(240);
+		SEND_GET_PC_ONLINE_LIST();
+		sleep(3);
 		if(check_tcp==1)
 		{
 			time++;
 			if(time%2==0)
 			{
-				ReLink_mi(NULL);
+				Exit_Mi_TCP();
+				sleep(3);
+				Init_Mi_TCP(MI_ADDR,MI_PORT);
 			}
 		}
 	}
 }
 
-char Char2Int(char ch)
+/*char Char2Int(char ch)
 {
     if(ch>='0' && ch<='9')return (char)(ch-'0');
     if(ch>='a' && ch<='f')return (char)(ch-'a'+10);
@@ -236,4 +241,4 @@ unsigned char* UrlDecode(char* str)
         }
     }
     return output;
-}
+}*/

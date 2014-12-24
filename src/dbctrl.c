@@ -163,7 +163,7 @@ int insert_mutil_orger(int gid,char* ids)
 	tdbh=SelectDbproc();
 	if(NULL==tdbh)
 		return -1;
-	DBPROCESS *dbprocess=tdbh->dbproc;
+	//DBPROCESS *dbprocess=tdbh->dbproc;
 
 	if(-1==CTRLDB(tdbh,SQL))
 	{
@@ -257,13 +257,14 @@ int exit_group_mutil(char* uid,int gid,int type)
 						{
 							if(usr->fd!=-1)
 							{
+								char* con="updata 8";
 								if(usr->flag==1)
 								{
-									Zero_RE(usr->fd,"8",1,1);
+									Zero_RE(usr->fd,con,strlen(con),1);
 									usr->flag=0;
 								}
 								else
-									insert_imf(usr->il,"8",1);
+									insert_imf(usr->il,con,strlen(con));
 							}
 						}
 						memset(tmp,0,32);
@@ -415,13 +416,13 @@ int delete_msg(char* ids,int type)
 	return ret;
 }
 
-int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
+int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint32_t systype)
 {
 	unsigned char SQL[256]= {0};
 	char userid[32]= {0};
 	int dbflag=0,flag=0,i,j,temp,ret=0,num=0;
-	unsigned char *d=NULL;
-	char* ndata=NULL;
+	unsigned char* d=NULL;
+	unsigned char* ndata=NULL;
 	unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 	unsigned char* cdes=NULL;
 
@@ -544,7 +545,7 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 		uint blen=clen;
 		if((temp=clen%8)>0)
 			clen=clen+(8-temp);
-		unsigned char* cdes=(unsigned char*)malloc(clen);
+		cdes=(unsigned char*)malloc(clen);
 		memset(cdes,0,clen);
 		FinalD3desEncryption(deskey,d , cdes , blen);
 		sprintf(SQL,"insert into ctm_ctm_msg_mt(DstUserId,SrcUserId,DataLen,Sendtime,Data) values('%s','%s',%u,getdate(),0x",des,src,clen,cdes);
@@ -565,6 +566,8 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 			}
 			dbflag=1;
 			tdbh->ctrling=0;
+			free(cdes);
+			cdes=NULL;
 			return -1;
 		}
 		if(flag==1)
@@ -572,6 +575,7 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 			uint tlen=strlen(d);
 			MS64_CHARINFO ms64=(MS64_CHARINFO)malloc(sizeof(MS64CHARINFO)+tlen);
 			memset(ms64,0,sizeof(MS64CHARINFO)+tlen);
+			//ms64->sys_type=systype;
 			strcpy(ms64->srcid,src);
 			strcpy(ms64->desid,des);
 			memcpy(ms64->context,d,tlen);
@@ -579,11 +583,15 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 			ret=MI_Write((char*)ms64,sizeof(MS64CHARINFO)+tlen,1);
 			num=MSG_RECV(RESPONSE,(char*)ms64->srcid,64,type);
 			free(ms64);
+			ms64=NULL;
+			free(d);
+			d=NULL;
 		}
-		//free(d);
 		if(ret==-1||num==-1)
 		{
 			tdbh->ctrling=0;
+			free(cdes);
+			cdes=NULL;
 			return -2;
 		}
 	}
@@ -629,7 +637,7 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 		uint blen=tlen;
 		if((temp=tlen%8)>0)
 			tlen=tlen+(8-temp);
-		unsigned char* cdes=(unsigned char*)malloc(tlen);
+		cdes=(unsigned char*)malloc(tlen);
 		memset(cdes,0,tlen);
 		FinalD3desEncryption(deskey,d , cdes , blen);
 		for(j=0; j<t; j++)
@@ -649,22 +657,24 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 				printf("dbsqlexec error!\n");
 			if(ReConnect(tdbh)<0)
 			{
-
 				tdbh->flg=0;
 				if(linkcount>0)
 				linkcount--;
 			}
-			dbflag=1;
+				dbflag=1;
 				tdbh->ctrling=0;
+				
 				return -1;
 			}
 		}
 		free(guser);
+		guser=NULL;
 		if(flag==1)
 		{
 			uint tlen=strlen(d);
 			MS_GROUP mg= (MS_GROUP)malloc(sizeof(MSGROUP)+tlen);
 			memset(mg,0,sizeof(MSGROUP)+tlen);
+			//mg->sys_type=systype;
 			strcpy(mg->uid,src);
 			mg->gid=atoi(des);
 			memcpy(mg->context,d,tlen);
@@ -672,8 +682,10 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 			ret=MI_Write((char*)mg,sizeof(MSGROUP)+tlen,1);
 			num=MSG_RECV(RESPONSE,(char*)mg->uid,32+sizeof(uint32_t),type);
 			free(mg);
+			mg=NULL;
+			free(d);
+			d=NULL;
 		}
-		//free(d);
 		if(ret==-1||num==-1)
 		{
 			tdbh->ctrling=0;
@@ -681,8 +693,8 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type)
 		}
 	}
 	tdbh->ctrling=0;	//解除使用标记
-	if(cdes!=NULL&&flag==1)
-		free(cdes);
+	free(cdes);
+	cdes=NULL;
 	return flag==1?1:0;
 }
 
@@ -848,11 +860,6 @@ char* get_member(int gid,int type)
 
 char* get_info(char* uid)
 {
-	char* xml=(char*)malloc(256);
-	memset(xml,0,256);
-	strcpy(xml,MO_XML_HEAD);
-	strcat(xml,"<conpany>");
-	uint len=strlen(xml);
 	char SQL[128]= {0};
 	char Phone[32]= {0};
 	char Mobile[32]= {0};
@@ -863,11 +870,16 @@ char* get_info(char* uid)
 	DbprocHandler tdbh=SelectDbproc();
 	if(NULL==tdbh)
 	{
-		free(xml);
 		return NULL;
 	}
 	DBPROCESS *dbprocess=tdbh->dbproc;
 /*****************************************************************************************/
+
+	char* xml=(char*)malloc(256);
+	memset(xml,0,256);
+	strcpy(xml,MO_XML_HEAD);
+	strcat(xml,"<conpany>");
+	uint len=strlen(xml);
 
 	dbcancel(dbprocess);    //清除上次查询结果
 	if(-1==CTRLDB(tdbh,SQL))
@@ -883,12 +895,12 @@ char* get_info(char* uid)
 		dbbind(dbprocess,3,CHARBIND,(DBINT)0,(BYTE*)Mail);
 		if(dbnextrow(dbprocess) != NO_MORE_ROWS)
 		{
-			if(Mobile==0)
-				stacpy(Mobile,"null");
-			if(Phone==0)
-				stacpy(Phone,"null");
-			if(Mail==0)
-				stacpy(Mail,"null");
+			if(Mobile==NULL)
+				strcpy(Mobile,"null");
+			if(Phone==NULL)
+				strcpy(Phone,"null");
+			if(Mail==NULL)
+				strcpy(Mail,"null");
 			sprintf(xml+len,"<workphone>%s</workphone><mobilephone>%s</mobilephone><email>%s</email></conpany>",Phone,Mobile,Mail);
 			tdbh->ctrling=0;
 			return xml;
@@ -1004,7 +1016,7 @@ char* get_picture(int pid,char* ext)
 				if(dbnextrow(dbprocess)!=NO_MORE_ROWS)
 				{
 					//明文长度
-					uint imglen=atoi(tmppic+2);
+					//uint imglen=atoi(tmppic+2);
 					//密文长度
 					uint desimglen=atoi(tmppic+10);
 
@@ -1040,25 +1052,10 @@ char* get_picture(int pid,char* ext)
 	return NULL;
 }
 /******************************废弃*******************************/
-int get_org_stu(int dpmid)
+/*int get_org_stu(int dpmid)
 {
 	char depart[1024]= {0};
 	int ret=0;
-	/*char SQL[128]={0};
-	  sprintf(SQL,"select DpmName from department_info where DpmId=%d",dpmid);
-	  dbcancel(dbprocess);
-	  if(-1==CTRLDB(SQL))
-	  return -1;
-	  if(dbresults(dbprocess)==SUCCEED)
-	  {
-	  dbbind(dbprocess,1,CHARBIND,(DBCHAR)0,(BYTE*)depart);
-	  if (dbnextrow(dbprocess) != NO_MORE_ROWS)
-	  {
-	  if(strcmp(depart,"")==0)
-	  ret=-1;
-	  goto _ret;
-	  }
-	  }*/
 	strcpy(depart,"/");
 	if(org_stu!=NULL&&0!=strcmp(org_stu,MO_XML_HEAD))
 		free(org_stu);
@@ -1090,13 +1087,13 @@ int get_subdepartmemt_user(char* departmemt,int did)
 	sprintf(SQL,"select customer_info.UserId,Name,Sex,Mood from customer_info,department_customer_relation where customer_info.UserId=department_customer_relation.UserId and DpmId=%d",did);
 	
 /*****************************************新增连接池**************************************/
-	DbprocHandler tdbh=SelectDbproc();
-	if(NULL==tdbh)
-		return -1;
-	DBPROCESS *dbprocess=tdbh->dbproc;
+	//DbprocHandler tdbh=SelectDbproc();
+	//if(NULL==tdbh)
+		//return -1;
+	//DBPROCESS *dbprocess=tdbh->dbproc;
 /*****************************************************************************************/
 	
-	dbcancel(dbprocess);    //清除上次查询结果
+	/*dbcancel(dbprocess);    //清除上次查询结果
 	if(-1==CTRLDB(tdbh,SQL))
 	{
 		tdbh->ctrling=0;
@@ -1208,17 +1205,19 @@ char* search_info(char* loginer,int type)
 	DBINT result;
 	uint len=0,tlen;
 	int ret=0;
-	char* xml=(char*)malloc(52);
-	memset(xml,0,52);
-	strcpy(xml,MO_XML_HEAD);
-	strcat(xml,"<conpany>");
 
 /*****************************************新增连接池**************************************/
 	DbprocHandler tdbh=SelectDbproc();
 	if(NULL==tdbh)
+	{
 		return NULL;
+	}
 	DBPROCESS *dbprocess=tdbh->dbproc;
 /*****************************************************************************************/
+	char* xml=(char*)malloc(52);
+	memset(xml,0,52);
+	strcpy(xml,MO_XML_HEAD);
+	strcat(xml,"<conpany>");
 
 	if(len<5120&&(type==CTRLALL||type==CTRLPERSON))
 	{
@@ -1227,6 +1226,7 @@ char* search_info(char* loginer,int type)
 		if(-1==CTRLDB(tdbh,SQL))
 		{
 			free(xml);
+			xml=NULL;
 			tdbh->ctrling=0;
 			return NULL;
 		}
@@ -1269,6 +1269,7 @@ char* search_info(char* loginer,int type)
 		if(-1==CTRLDB(tdbh,SQL))
 		{
 			free(xml);
+			xml=NULL;
 			tdbh->ctrling=0;
 			return NULL;
 		}
@@ -1315,6 +1316,7 @@ char* search_info(char* loginer,int type)
 		if(-1==CTRLDB(tdbh,SQL))
 		{
 			free(xml);
+			xml=NULL;
 			tdbh->ctrling=0;
 			return NULL;
 		}
@@ -1363,6 +1365,7 @@ char* search_info(char* loginer,int type)
 	else
 	{
 		free(xml);
+		xml=NULL;
 		tdbh->ctrling=0;
 		return NULL;
 	}
@@ -1423,13 +1426,26 @@ int get_group_mutil_user(char* uid,int gid,int type)
 }
 
 /************************************************************************/
-/* wh
-/* 2014.07.02
-/* PC版组织结构XML构造
+// wh
+// 2014.07.02
+// PC版组织结构XML构造
 /************************************************************************/
 
 int GetOnlineCtms(int dpmid)
 {
+	// 1、先根据传入的根部门ID获取其自身信息
+	char sqltext[128] = {0};
+	sprintf(sqltext, "SELECT [DpmName] FROM [department_info] WHERE [DpmId] = %d", dpmid);
+
+/*****************************************新增连接池**************************************/
+	DbprocHandler tdbh=SelectDbproc();
+	if(NULL==tdbh)
+	{
+		return -1;
+	}
+	DBPROCESS *dbprocess=tdbh->dbproc;
+/*****************************************************************************************/
+
 	if(org_stu != NULL && 0 != strcmp(org_stu, MO_XML_HEAD))
 	{
 		free(org_stu);
@@ -1442,16 +1458,6 @@ int GetOnlineCtms(int dpmid)
 
 	strcat(org_stu, MO_XML_HEAD);
 	strcat(org_stu, "<version><company>");
-	// 1、先根据传入的根部门ID获取其自身信息
-	char sqltext[128] = {0};
-	sprintf(sqltext, "SELECT [DpmName] FROM [department_info] WHERE [DpmId] = %d", dpmid);
-
-/*****************************************新增连接池**************************************/
-	DbprocHandler tdbh=SelectDbproc();
-	if(NULL==tdbh)
-		return -1;
-	DBPROCESS *dbprocess=tdbh->dbproc;
-/*****************************************************************************************/
 
 	dbcancel(dbprocess);    //清除上次查询结果
 	if(-1 == CTRLDB(tdbh,sqltext))
@@ -1677,4 +1683,44 @@ int check_user_photo(char* uid,char* md5)
 	}
 	tdbh->ctrling=0;
 	return -1;
+}
+
+char* getCIMS_id(char *uid)
+{
+	char SQL[128]={0};
+	sprintf(SQL,"select MountId from BT_MountRelation where UserId='%s'",uid);
+/*****************************************新增连接池**************************************/
+	DbprocHandler tdbh=SelectDbproc();
+	if(NULL==tdbh)
+		return NULL;
+	DBPROCESS *dbprocess=tdbh->dbproc;
+
+	dbcancel(dbprocess);    //清除上次查询结果
+	if(-1==CTRLDB(tdbh,SQL))
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
+/*****************************************************************************************/
+	char* mountid=(char*)malloc(32);
+	memset(mountid,0,32);
+	DBINT res;
+	if((res=dbresults(dbprocess))!=NO_MORE_RESULTS)
+	{
+		if(res==SUCCEED)
+		{
+			dbbind(dbprocess,1,CHARBIND, (DBCHAR)0,(BYTE*)mountid);
+			if(dbnextrow(dbprocess) != NO_MORE_ROWS)
+			{
+				if(NULL!=mountid)
+				{
+					tdbh->ctrling=0;
+					return mountid;
+				}
+			}
+		}
+	}
+	free(mountid);
+	tdbh->ctrling=0;
+	return NULL;
 }

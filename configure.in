@@ -13,7 +13,7 @@ AM_INIT_AUTOMAKE(server,1.0)
 ${CFLAGS="-O2"}
 AC_PROG_CC
 
-AC_ARG_ENABLE(epoll,[	--enable-epoll	epoll support],,enable_epoll=no)
+AC_ARG_ENABLE(epoll,[--enable-epoll	epoll support],,enable_epoll=no)
 if test "$enable_epoll" = yes; then
 	AC_DEFINE(LINUX)
 fi

@@ -1,34 +1,45 @@
 #include "head.h"
 #include "conf.h"
 
+#ifdef LINUX
+static int epfd=-1;
+#endif
+
+static struct config *cfg;
+static pthread_t timer;	//CGI在线更新线程
+
 int main(int argc, char *argv[])
 {
     /****************************主函数局部变量***********************/
     
 	int i=0;
-    int ret=-1;
-    int max_cgi=-1;
     int new_fd=-1;
-	int num = 1;
-    pthread_t timer;
+	int num = 1;   
+	pthread_t check_mi;	//用于定时检查中间件连接正常的线程
     struct sockaddr_un cgi_addr;
 
 	/********************************************************************************************/
 
 	/*******************************************初始化操作***************************************/
 
+	//读配置文件
 	if(argc!=2)
 	{
 		printf("Parameter error\n");
 		exit(-1);
 	}
 	
-	struct config *cfg;
 	if(!(cfg = cfg_load_file(argv[1])))
 	{
 		printf("Reads the configuration file error!\n");
 		exit(-1);
 	}
+
+	/*if(!(cfg = cfg_load_file("/home/mu/bt/beetalk.conf")))
+	{
+		printf("Reads the configuration file error!\n");
+		exit(-1);
+	}*/
 
 	DBSERVER=cfg_getstr(cfg,"FreeTDS.DBSERVER");  //数据库服务器连接地址
 	SQL_DBNAME=cfg_getstr(cfg,"FreeTDS.SQL_DBNAME");  //数据库名
@@ -46,6 +57,25 @@ int main(int argc, char *argv[])
 	UNIX_PATH=cfg_getstr(cfg,"CGI_SET.UNIX_PATH");    //域套接字连接符路径(用户必须设置有读写权限的目录内，套接口的名称必须符合文件名命名规则且不能有后缀，该变量和CGI头文件中的同名宏必须相同)
 	LOG_PATH=cfg_getstr(cfg,"CGI_SET.LOG_PATH");	//日志路径
 
+	if(signal(SIGTERM, exitbt)<0)	//注册关闭信号
+	{
+		perror("error signal 15");
+		exit(-1);
+	}
+
+	if(signal(SIGSEGV, exitbt)<0)	//异常关闭也处理
+	{
+		perror("error signal 11");
+		exit(-1);
+	}
+
+	if(signal(SIGINT, exitbt)<0)	//异常关闭也处理
+	{
+		perror("error signal 2");
+		exit(-1);
+	}
+	
+	//转入后台运行
 	if(daemon(1, 1) < 0)  
     {  
         perror("error daemon"); 
@@ -58,6 +88,7 @@ int main(int argc, char *argv[])
 	}
 	
 	user=(UL)malloc(sizeof(User_Linking));  //初始化用户链表
+	memset(user,0,sizeof(User_Linking));
     user->next=NULL;
     org_stu=NULL;   //初始化组织结构
     tmp_stu=NULL;
@@ -93,12 +124,6 @@ int main(int argc, char *argv[])
         exit(-1);
 	}
 
-    /*if(-1 == ConnectToDB(DBSERVER,SQL_USER,SQL_PASSWD,SQL_DBNAME))	//连接数据库
-    {
-        printf("Could not establish connection\n");
-        exit(-1);
-    }*/
-
     /****************************************************************************************************/
 
     /************************************************创建于中间件交互线程***************************************/
@@ -107,7 +132,8 @@ int main(int argc, char *argv[])
 	{
 		exit(-1);
 	}
-
+	//用于检测与中间件的连通性的线程
+	sleep(2);
 	if(pthread_create(&check_mi,NULL,(void*)CHECK_MI_LINK,NULL)<0)
 	{
 		printf("pthread_create check_mi_link error\n");
@@ -134,10 +160,10 @@ int main(int argc, char *argv[])
     }
 	setnonblocking(cgi_fd);
 
-    /*************************************epoll方法定义，windows下不支持**********************/
+    /*************************************epoll方法定义，只能用于Linux**********************/
 #ifdef LINUX   
     struct epoll_event ev={0},events[20];
-    int epfd=epoll_create1(0);
+    epfd=epoll_create1(0);
     if(-1==epfd)
     {
         perror("epoll_create1 error");
@@ -155,7 +181,7 @@ int main(int argc, char *argv[])
     int nfds=-1;
     /*****************************************************************************************/
 
-    /*************************************传统SELECT方式，通用于windows*************************/
+    /*************************************传统POLL方式，通用于任何系统*************************/
 #else
 	struct pollfd master[MAX_CGI_LINK+1];
 	for(i = 0; i < MAX_CGI_LINK+1; i++)
@@ -216,8 +242,8 @@ int main(int argc, char *argv[])
 #ifdef LINUX
         if((nfds=epoll_wait(epfd,events,num,-1))<0)
         {
-            //if(errno==EINTR)    //调试时使用，调试结束后必须注释
-                //continue;
+            if(errno==EINTR)    //调试时使用，调试结束后必须注释
+                continue;
 
             perror("epoll_wait error");
 			writelog("epoll_wait error");
@@ -392,38 +418,44 @@ int main(int argc, char *argv[])
 		}
 #endif
     }
+	return 0;
+}
 
-    Exit_Mi_TCP();
+void exitbt(int signo)
+{
+	Exit_Mi_TCP();	//关闭中间件连接
 
-	if(pthread_cancel(check_mi)<0)  //关闭中间件检查线程
-    {
-        printf("pthread_cancle check_mi\n");
-		writelog("pthread_cancle check_mi");
-        return -1;
-    }
+	if(pthread_cancel(timer)<0)
+	{
+		printf("pthread_cancle timer\n");
+		writelog("pthread_cancle timer");
+        exit(-1);
+	}
+	
+	if(org_stu != NULL && 0 != strcmp(org_stu, MO_XML_HEAD))	//清理组织结构
+	{
+		free(org_stu);
+	}
 
-	if(pthread_join(check_mi,NULL)<0) //阻塞主线程
-    {
-        printf("pthread_join check_mi\n");
-		writelog("pthread_join check_mi");
-        return -1;
-    }
+	close(cgi_fd);
+#ifdef LINUX
+	close(epfd);
+#endif
+	//清理用户在线列表
+	DeleteULList(user);
+	free(user);
+	free(MO_OL);
+	free(PC_OL);
 
 	if(pthread_mutex_destroy(&mutex_cgi)<0)  //销毁互斥锁
     {
-        printf("pthread_mutex_destroy(ol)");
-		writelog("pthread_mutex_destroy(ol)");
+        printf("pthread_mutex_destroy(cgi)");
+		writelog("pthread_mutex_destroy(cgi)");
         exit(-1);
     }
 
-	/*if(pthread_mutex_destroy(&mutex_sql)<0) //销毁互斥锁
-    {
-        printf("pthread_mutex_destroy(ol)");
-        exit(-1);
-    }*/
-
 	CloseConnection(dph);	//断开数据库
-    //CloseConnection();  //断开数据库
-	closelog();
-    return 0;
+	closelog();	//关闭日志
+	cfg_free(cfg);	//任务完成，释放
+	exit(0);
 }

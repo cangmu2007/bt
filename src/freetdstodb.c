@@ -1,5 +1,7 @@
 #include "freetdstodb.h"
 
+static pthread_mutex_t mutex_tt=PTHREAD_MUTEX_INITIALIZER;	//保证重连的唯一性
+
 int InitData(char* server,char* user,char* passwd,char* dbname)		//初始化连接信息
 {
 	if(NULL==server||NULL==user||NULL==passwd||NULL==dbname)
@@ -19,7 +21,8 @@ int ReConnect(DbprocHandler dbph)		//重新数据库连接
 	//数据库
 	//LOGINREC* loginrec = dblogin();
 	//DBSETLUSER(loginrec, SQL_USER);
-	//DBSETLPWD(loginrec, PASSWD);	
+	//DBSETLPWD(loginrec, PASSWD);
+	pthread_mutex_lock(&mutex_tt);
 	if(dbph->dbproc!=FAIL)
 	{
 		dbclose(dbph->dbproc);
@@ -30,38 +33,40 @@ int ReConnect(DbprocHandler dbph)		//重新数据库连接
 	//出错处理
 	if(dbph->dbproc == FAIL)
 	{
-		char msg[80]={0};
-		sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 fail, exit",dbph->num);
-		printf("%s\n",msg);
-		writelog(msg);
+		printf("dbh[%d] connect to MS SQL SERVER 2008 fail, exit\n",dbph->num);
+		pthread_mutex_unlock(&mutex_tt);
 		return -1;
 	}
 	else
 	{
-		char msg[80]={0};
-		sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 success",dbph->num);
-		printf("%s\n",msg);
-		writelog(msg);
+		printf("dbh[%d] connect to MS SQL SERVER 2008 success\n",dbph->num);
 	}
+	int ret=-1;
 	//打开指定数据库
 	if(dbuse(dbph->dbproc, SQL_DBNAME) == FAIL)
 	{
 		printf("Open database failed!\n");
-		writelog("Open database failed");
+		char msg[80]={0};
+		sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 fail, exit",dbph->num);
+		writelog(msg);
 		dbclose(dbph->dbproc);
 		dbph->dbproc=FAIL;
-		return -1;
+		ret=-1;
 	}
 	else
 	{
 		printf("Open database success!\n");
-		writelog("Open database success");
+		char msg[80]={0};
+		sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 success",dbph->num);
+		writelog(msg);
 		dbph->flg=1;
 		dbph->ctrling=0;
 		if(initlink>linkcount)
-			linkcount++;
-		return 0;
+			linkcount++;		
+		ret=0;
 	}
+	pthread_mutex_unlock(&mutex_tt);
+	return ret;
 }
 
 uint ConnectToDB()		//建立数据库连接
@@ -85,24 +90,20 @@ uint ConnectToDB()		//建立数据库连接
 			dbh->dbproc = dbopen(loginrec, DBSERVER);	//连接数据库
 			if(dbh->dbproc == FAIL)
 			{
-				char msg[80]={0};
-				sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 fail, exit",dbh->num);
-				printf("%s\n",msg);
-				writelog(msg);				
+				printf("dbh[%d] connect to MS SQL SERVER 2008 fail, exit\n",dbh->num);	
 				continue;
 			}
 			else
 			{
-				char msg[80]={0};
-				sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 success",dbh->num);
-				printf("%s\n",msg);
-				writelog(msg);	
+				printf("dbh[%d] connect to MS SQL SERVER 2008 success\n",dbh->num);	
 			}
 
 			if(dbuse(dbh->dbproc, SQL_DBNAME) == FAIL)
 			{
 				printf("Open database failed!\n");
-				writelog("Open database failed");
+				char msg[80]={0};
+				sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 fail, exit",dbh->num);
+				writelog(msg);
 				dbclose(dbh->dbproc);
 				dbh->dbproc=FAIL;
 				continue;
@@ -110,7 +111,9 @@ uint ConnectToDB()		//建立数据库连接
 			else
 			{
 				printf("Open database success!\n");
-				writelog("Open database success");
+				char msg[80]={0};
+				sprintf(msg,"dbh[%d] connect to MS SQL SERVER 2008 success",dbh->num);
+				writelog(msg);
 				//连接成功，初始化连接标记并统计连接数
 				dbh->flg=1;
 				dbh->ctrling=0;
@@ -131,10 +134,7 @@ int CTRLDB(DbprocHandler dbh,char* SQL_CTRL)		//操作数据库
 	int ret=0;
 	if(dbsqlexec(dbh->dbproc) == FAIL)
 	{
-		char msg[40]={0};
-		sprintf(msg,"ctrl %d dbproc",dbh->num);
-		printf("%s\n",msg);
-		writelog(msg);	
+		printf("ctrl %d dbproc\n",dbh->num);	
 		ret=-1;
 		if(ReConnect(dbh)<0)
 		{
@@ -144,10 +144,7 @@ int CTRLDB(DbprocHandler dbh,char* SQL_CTRL)		//操作数据库
 		}
 		else
 		{
-			char msg[40]={0};
-			sprintf(msg,"ctrl reconnect %d dbproc",dbh->num);
-			printf("%s\n",msg);
-			writelog(msg);	
+			printf("ctrl reconnect %d dbproc\n",dbh->num);
 		}
 	}
 	dbflag=1;
@@ -169,10 +166,7 @@ void CloseConnection()		//关闭数据库，调用前先停止运行ReLinkThread
 				dbh->dbproc=FAIL;
 			}
 			dbh->flg=0;
-			char msg[40]={0};
-			sprintf(msg,"close dbh[%d]",dbh->num);
-			printf("%s\n",msg);
-			writelog(msg);
+			printf("close dbh[%d]\n",dbh->num);
 		}
 	}
 	free(dph);
@@ -198,14 +192,12 @@ void* ReLinkThread(void* arg)
 		{
 			if(ReConnect(dbh)==0)
 			{
-				char msg[40]={0};
-				sprintf(msg,"reconnect database %d",dbh->num);
-				printf("%s\n",msg);
-				writelog(msg);
+				printf("reconnect database %d\n",dbh->num);
 			}
 		}
 	}
 	pthread_mutex_unlock(&re_mutex);
+	return NULL;
 }
 
 DbprocHandler SelectDbproc()		//选择连接
@@ -233,19 +225,13 @@ DbprocHandler SelectDbproc()		//选择连接
 				dbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-				char msg[48]={0};
-				sprintf(msg,"select FAIL off %d dbproc!\n",dbh->num);
-				printf("%s\n",msg);
-				writelog(msg);
+				printf("select FAIL off %d dbproc!\n",dbh->num);
 			}
 		}
 		else
 		{
 			flg=1;
-			char msg[48]={0};
-			sprintf(msg,"select flg off %d dbproc!\n",dbh->num);
-			printf("%s\n",msg);
-			writelog(msg);
+			printf("select flg off %d dbproc!\n",dbh->num);
 			if(linkcount>0)
 				linkcount--;
 		}

@@ -15,6 +15,6 @@ int openlog(char* path);
 
 int writelog(char* msg);
 
-int closelog();
+void closelog();
 
 char* gettime();

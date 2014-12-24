@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <netinet/tcp.h>
+#include <signal.h>
 #include "freetdstodb.h"
 #include "log.h"
 
@@ -73,7 +74,16 @@
 #define BUS_UPDATE_LOGINER_MSG 18   //修改个人资料
 #define BUS_CON_PIC 19  //获取会话内容中的图片
 #define BUS_CHE_PHOTO 20	//验证用户头像
+#define BUS_CIMS_ID 21	//验证用户头像
 /***********************************************************************************/
+
+enum DEV_TYPE
+{
+	IGNORE=0x0,
+	ANDROID,
+	IOS,
+	WP,
+};
 
 enum GroupMutil
 {
@@ -229,6 +239,7 @@ typedef struct
 typedef struct
 {
     BsnsPacket bp;
+	//uint32_t sys_type;
     char srcid[32];
     char desid[32];
     char context[0];
@@ -282,6 +293,7 @@ typedef struct
 typedef struct
 {
     BsnsPacket bp;
+	//uint32_t sys_type;
     char uid[32];
     uint32_t gid;
     char context[0];
@@ -300,12 +312,12 @@ typedef struct
 
 //3）中间件提醒服务端，群/讨论组消息，gid为群/讨论组ID，uid为发送人ID
 
-typedef struct
+/*typedef struct
 {
     uint32_t ntype;
     uint32_t len;
     char context[0];
-} REXML,*RE_XML;
+} REXML,*RE_XML;*/
 
 /***************************************************************************************/
 
@@ -317,6 +329,7 @@ typedef struct  //CGI发来的消息
     uint32_t type;  //业务号
     char sender[32];    //用户id
     char recver[32];    //目标id，用于对话
+	uint32_t dev_type;	//设备系统类型
     uint32_t len;   //context的长度
     char context[0];    //业务信息
 } CGI_MSG,*CM;
@@ -327,12 +340,12 @@ typedef struct  //回应给CGI的信息
     char context[0];    //内容文本
 } CGI_RM_MSG,*CRM;
 
-typedef struct Depart
+/*typedef struct Depart
 {
     int did;
     char dpm[128];
     struct Depart *next;
-} subdpm,*subdpmt;
+} subdpm,*subdpmt;*/
 
 struct _DPMNODE	// 部门节点信息
 {
@@ -361,19 +374,18 @@ typedef struct user_link    //用户在线结构体，用于组成链表
 
 /*************************************全局变量******************************************/
 
-pthread_mutex_t mutex,mutex_ol,mutex_cgi; //线程锁，防止多个线程同时发送消息给中间件和CGI
+pthread_mutex_t mutex,mutex_cgi; //线程锁，防止多个线程同时发送消息给中间件和CGI
 //pthread_mutex_t mutex_sql;  //防止多个线程同时读写数据库
 int mi_fd;  //中间件套接字
 int cgi_fd; //CGI域套接字服务端文件描述符
 UL user;    //用户在线链表
 sem_t mi_send_recv_ctrl;    //中间件启动连接控制
 pthread_t rad_thread;	//中间件接收线程
-pthread_t check_mi;	//用于定时检查中间件连接正常的线程
 
 char* org_stu;  //组织结构
 char* tmp_stu;  //临时组织结构缓存区
 
-int g_nOrgStuLen;	// 组织结构缓冲区长度
+int g_nOrgStuLen;	//组织结构缓冲区长度
 
 char *PC_OL;    //PC端在线列表
 char *MO_OL;    //移动端在线列表
@@ -401,6 +413,8 @@ char* MI_ADDR; //中间件IP
 int CONPANY_ID;    //公司ID
 
 /***************************************************************************************/
+/*************************************************main.c**********************************/
+void exitbt(int signo);	//关闭函数，用于擦屁股
 
 /***********************************************net.c***********************************/
 int Init_Mi_TCP(char* ip,int port); //初始化连接中间件
@@ -454,14 +468,12 @@ char* ExitGroup(char* loginer,char* gid);   //退出群
 char* ExitMulti(char* loginer,char* mid);   //退出多人会话
 char* UpdateLoginerMsg(char* loginer,char* context);    //修改本人个人资料
 char* GetPicture(char* pid);    //获取对话内容中的图片
-char* Talk(int type,char* src,char* des,char* context,uint32_t len);    //发送会话
+char* Talk(int type,char* src,char* des,char* context,uint32_t len,uint32_t systype);    //发送会话
 char* GetImf(UL ul,char* loginer); //获取通知队列
-void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl); //字符串替换
-int Count(char *const a,char *const b); //子字符串统计
+//void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl); //字符串替换
+//int Count(char *const a,char *const b); //子字符串统计
 char* Check_Photo(char* uid,char* md5);	//验证头像
-
-//char* GetImportList(char* id,char* context);	//获取通知公告列表
-//char* GetImportDetail(char* id,char* context);	//获取通知公告详细
+char* Get_CIMS_ID(char* uid);	//获取CIMS的ID
 
 /***************************************************************************************/
 
@@ -470,9 +482,9 @@ char* Check_Photo(char* uid,char* md5);	//验证头像
 void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen);  //获取PC端在线列表
 int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type);   //获取PC端消息
 void MSG_INFO(unsigned char Result,int type);   //获取PC端通知
-char Char2Int(char ch); //字符转整型
-char Str2Bin(char *str);    //字符转二进制
-unsigned char* UrlDecode(char* str);    //URL解码
+//char Char2Int(char ch); //字符转整型
+//char Str2Bin(char *str);    //字符转二进制
+//unsigned char* UrlDecode(char* str);    //URL解码
 int Link_Mi();  //连接中间件确认并发送自己的在线成员列表
 int SEND_GET_PC_ONLINE_LIST();  //获取PC端在线成员列表
 void OnMiddleLogin(unsigned char result);   //程序登录中间件
@@ -481,14 +493,6 @@ int Send_MO_OL();   //发送移动端在线列表
 void* CHECK_MI_LINK(void* arg);	//检查中间件连接状态线程
 
 /***************************************************************************************/
-
-/**************************************freetds.c(LINUX)******************************************/
-
-//int ConnectToDB(char* server,char* userid,char* passwd,char* dbname);   //establishes the connection with the DB
-//void CloseConnection(); //关闭连接
-//int CTRLDB(char* SQL_CTRL); //操作语句
-
-/********************************************************************************************************************/
 
 /******************************************************dbctrl.c******************************************************/
 
@@ -499,7 +503,7 @@ int insert_mutil_orger(int gid,char* ids);  //新增讨论组成员
 int update_org_info(char* uid,char* Phone,char* Mobile,char* Mail,char* Mood);  //修改成员信息
 int exit_group_mutil(char* uid,int gid,int type);   //退出群/讨论组
 int delete_msg(char* ids,int type); //删除离线消息
-int insert_talklist(char* src,char* des,char* context,uint32_t len,int type);   //新增会话消息
+int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint32_t systype);   //新增会话消息
 int check_user_group_or_mutil(int gid,char* uid,int type);  //确认用户在某个群/讨论组中
 //int get_org_stu(int dpmid); //获取组织结构
 //int get_subdepartmemt_user(char* departmemt,int did);   //获取单个部门组织结构
@@ -514,6 +518,7 @@ int check_user_photo(char* uid,char* md5);	//验证数据库中photo的MD5字段
 //获取组织结构
 int GetOnlineCtms(int dpmid);
 int GetSubDpmsAndWorkersForCvst(int dmpid);
+char* getCIMS_id(char *uid);	//查询CIMS的ID
 
 /********************************************************************************************************************/
 

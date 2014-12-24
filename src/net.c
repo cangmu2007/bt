@@ -11,13 +11,17 @@ int Init_Mi_TCP(char* ip,int port)
         return -1;
     }
 
+	//设置连接超时
+	struct timeval timeout = {10,0}; 
+	setsockopt(mi_fd,SOL_SOCKET,SO_SNDTIMEO,(char *)&timeout,sizeof(struct timeval));
+
+	//心跳包
 	int keepIdle = 1000;
 	int keepInterval = 30;
 	int keepCount = 10;
-
-	setsockopt(mi_fd, SOL_TCP, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle));
-	setsockopt(mi_fd, SOL_TCP,TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval));
-	setsockopt(mi_fd,SOL_TCP, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount));
+	setsockopt(mi_fd,SOL_TCP, TCP_KEEPIDLE,(void *)&keepIdle,sizeof(keepIdle));
+	setsockopt(mi_fd,SOL_TCP,TCP_KEEPINTVL,(void *)&keepInterval,sizeof(keepInterval));
+	setsockopt(mi_fd,SOL_TCP, TCP_KEEPCNT,(void *)&keepCount,sizeof(keepCount));
 
 	struct sockaddr_in MI_addr;
     memset(&MI_addr, 0,sizeof(MI_addr));    //TCP连接地址
@@ -34,12 +38,12 @@ int Init_Mi_TCP(char* ip,int port)
         return -1;
     }
 
-    if(pthread_mutex_init(&mutex_ol,NULL)<0)    //初始化互斥锁
+    /*if(pthread_mutex_init(&mutex_ol,NULL)<0)    //初始化互斥锁
     {
         printf("pthread_mutex_init ol error\n");
 		writelog("pthread_mutex_init ol error");
         return -1;
-    }
+    }*/
 
 	if(pthread_mutex_init(&mutex,NULL)<0) //初始化互斥锁
     {
@@ -67,8 +71,6 @@ int Init_Mi_TCP(char* ip,int port)
     {
         printf("Failed to connect Middleware\n");
 		writelog("Failed to connect Middleware");
-        close(mi_fd);
-		mi_fd=-1;
         return -1;
     }
     sem_wait(&mi_send_recv_ctrl);
@@ -92,6 +94,7 @@ int Init_Mi_TCP(char* ip,int port)
 
 int Exit_Mi_TCP()
 {
+
 	if(pthread_cancel(rad_thread)<0)  //关闭中间件读线程
     {
         printf("pthread_cancle recv\n");
@@ -105,12 +108,12 @@ int Exit_Mi_TCP()
         return -1;
     }
 
-    if(pthread_mutex_destroy(&mutex_ol)<0)  //销毁互斥锁
+    /*if(pthread_mutex_destroy(&mutex_ol)<0)  //销毁互斥锁
     {
         printf("pthread_mutex_destroy(ol)\n");
 		writelog("pthread_mutex_destroy(ol)");
         return -1;
-    }
+    }*/
 
     if(pthread_mutex_destroy(&mutex)<0) //销毁发送端互斥锁
     {
@@ -126,13 +129,20 @@ int Exit_Mi_TCP()
         return -1;
     }
 
-    close(mi_fd);   //关闭中间件套接口
+	if(mi_fd!=-1)
+	{
+		close(mi_fd);   //关闭中间件套接口
+		mi_fd=-1;
+	}
+
 	return 0;
 }
 
 int MI_Write(const char *bsnsdata, int len,int flag)
 {
-    int num = -1;
+	int num = -1;
+	if(mi_fd==-1)
+		return -1;   
     unsigned short max_len = DATA_BUF_LEN;
     int headlen = sizeof(TransPacket);
     unsigned short nCutLen = max_len - headlen;// 分包数据域最大长度
@@ -187,12 +197,14 @@ int MI_Write(const char *bsnsdata, int len,int flag)
         }
     }
 	free(transpacket);
+	pthread_mutex_unlock(&mutex);   //解锁
 	if(num==-1&&flag==1)
 	{
-		ReLink_mi(NULL);
+		Exit_Mi_TCP();
+		sleep(3);
+		Init_Mi_TCP(MI_ADDR,MI_PORT);
 		num=MI_Write(bsnsdata,len,0);
 	}
-    pthread_mutex_unlock(&mutex);   //解锁
     return (num == -1) ? -1 : len + headlen;
 }
 
@@ -282,13 +294,32 @@ void* MI_Read(void* args)   //TCP接收并做相应处理
 		}
         pthread_exit((void*)&ret);  //出错关闭线程并返回-1
     }
+	return NULL;
 }
 
 void* ReLink_mi(void* arg)
 {
+	pthread_detach(pthread_self()); //分离线程
 	Exit_Mi_TCP();
-	sleep(3);
-	Init_Mi_TCP(MI_ADDR,MI_PORT);
+	for(;;)
+	{
+		sleep(3);
+		if(Init_Mi_TCP(MI_ADDR,MI_PORT)<0)
+		{
+			if(mi_fd!=-1)
+			{
+				close(mi_fd);
+				mi_fd=-1;
+			}
+			else
+			{
+				Exit_Mi_TCP();
+			}
+		}
+		else
+			break;
+	}
+	return NULL;
 }
 
 void HandleBusiness(BsPt pBsns, const char *data, uint len)

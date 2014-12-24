@@ -22,11 +22,11 @@ void setnonblocking(int sock)
 void* CGI_Link(void* nfd)   //CGI连接处理
 {
 	pthread_detach(pthread_self()); //分离线程
-    int fd=(*(int*)nfd);
-    uint size=0;
+    int fd=*((int*)nfd);
+	uint32_t size=0;
     int ret=-1;
-    while(((ret=recv(fd,(char*)&size,sizeof(uint32_t),0))<0)&&(EAGAIN == errno));	//接收包的长度
-	if(ret!=sizeof(uint32_t)||size==0)
+    while(((ret=recv(fd,(char*)&size,sizeof(uint32_t),0))<0)&&((errno == EAGAIN||errno == EINTR)));	//接收包的长度
+	if(ret!=sizeof(uint32_t)||size<=sizeof(uint32_t))
     {
         perror("CGI recv2");
 		writelog("CGI recv2");
@@ -49,7 +49,7 @@ void* CGI_Link(void* nfd)   //CGI连接处理
 			ret=recv(fd,rbuf+recv_count,leftsize-recv_count,0);
 			if(ret<0)
 			{
-				if(EAGAIN!=errno)	//如果出现EAGAIN，则忽略
+				if(errno != EAGAIN&&errno != EINTR)	//如果出现EAGAIN，则忽略
 				{
 					perror("CGI recv3");
 					writelog("CGI recv3");
@@ -77,8 +77,7 @@ void* CGI_Link(void* nfd)   //CGI连接处理
 			}
             cgi_pk->packet_len=size;
             memcpy((char*)(&cgi_pk->type), rbuf, leftsize); 
-			free(rbuf); 
-			
+			free(rbuf);
 
             //pthread_mutex_lock(&mutex_sql);
             CRM crm=Business_deal(cgi_pk,fd);	//实际业务处理
@@ -96,11 +95,34 @@ void* CGI_Link(void* nfd)   //CGI连接处理
                 pthread_exit((void*)&ret);
             }
             free(cgi_pk);
-            if((ret=send(fd,(char*)crm,crm->len+sizeof(uint32_t),MSG_NOSIGNAL))<0)	//返回处理结果
-            {
-                perror("CGI send");
-				writelog("CGI send");
-            }
+			uint sent=0;
+			while(sent<crm->len+sizeof(uint32_t))
+			{
+				if((ret=send(fd,(char*)crm+sent,crm->len+sizeof(uint32_t)-sent,MSG_NOSIGNAL))<0)	//返回处理结果
+				{
+					if(errno == EINTR)
+					{
+						continue;
+					}
+
+					if(errno == EAGAIN)
+					{
+						usleep(1000);
+						continue;
+					}
+					perror("CGI send");
+					writelog("CGI send");
+					break;
+				}
+				else if(ret==0)
+				{
+					break;
+				}
+				else
+				{
+					sent+=ret;
+				}
+			}
 			if(NULL!=crm)
 			{
 				free(crm);
@@ -112,7 +134,7 @@ _re:
     close(fd);
     if(-1==ret)
         pthread_exit((void*)&ret);
-    return 0;
+    return NULL;
 }
 
 void* Check_OutLine(void* nfd)
@@ -124,7 +146,7 @@ void* Check_OutLine(void* nfd)
     pthread_testcancel();
     //用户掉线
     close(ul.fd);
-    MS32CHARINFO ms32= {0};
+    MS32CHARINFO ms32={0};
     ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGOUT, REQUEST, NONE,32);
     strcpy(ms32.id,ul.id);
     MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1);
@@ -135,11 +157,12 @@ void* Check_OutLine(void* nfd)
         ull=NULL;
         flush_list(user);
     }
+	return NULL;
 }
 
 int Zero_RE(int fd,char* context,int len,int type)
 {
-    int temp,ret,kill;
+    int ret=-1;
     CRM crm=(CRM)malloc(len+sizeof(uint32_t)+1);
     memset(crm,0,len+sizeof(uint32_t)+1);
 
@@ -147,12 +170,37 @@ int Zero_RE(int fd,char* context,int len,int type)
     memcpy(crm->context,context,len);
     crm->len=len;
     pthread_mutex_lock(&mutex_cgi); //上锁
-    if(ret=send(fd,(char*)crm,crm->len+sizeof(uint32_t),MSG_NOSIGNAL)<0)
-    {
-        perror("CGI re send");
-		writelog("CGI re send");
-    }
+	uint sent=0;
+	while(sent<crm->len+sizeof(uint32_t))
+	{
+		if((ret=send(fd,(char*)crm+sent,crm->len+sizeof(uint32_t)-sent,MSG_NOSIGNAL))<0)
+		{
+			if(errno == EINTR)
+			{
+				continue;
+			}
+
+			if(errno == EAGAIN)
+			{
+				usleep(1000);
+				continue;
+			}
+			perror("CGI re send");
+			writelog("CGI re send");
+			break;
+		}
+		else if(ret==0)
+		{
+			break;
+		}
+		else
+		{
+			sent+=ret;
+		}
+	}
     pthread_mutex_unlock(&mutex_cgi); //解锁
+	free(crm);
+	crm=NULL;
 
     /*if(ret==-1) //出错
     {
@@ -161,9 +209,9 @@ int Zero_RE(int fd,char* context,int len,int type)
         goto _ret;
     }
     free(crm);
-    crm=NULL;
+    crm=NULL;*/
 
-    if(type==1)
+    /*if(type==1)
     {
         pthread_t time=0;
         UL ul=get_point_fd(user,fd);
@@ -181,7 +229,7 @@ int Zero_RE(int fd,char* context,int len,int type)
             }
         }
     }*/
-_ret:
+//_ret:
     if(type==0)
         printf("close fd=%d,result=%d\n",fd,close(fd));
     return ret;
@@ -250,12 +298,26 @@ CRM Business_deal(CM cm,int fd)
                 if(text==NULL)
                     ul->flag=1;
             }
-			if(NULL==text||0==strcmp(text,"FAULT"))
+			if(NULL==text||0==strcmp(text,"FAULT")||0==strcmp(text,"nologin")||0==strcmp(text,"update 5")||0==strcmp(text,"update 8")||0==strcmp(text,"update 12"))
                 flag=1;
             else
                 flag=2;
             //flag=1;
             break;
+	/*
+	特别记录，0业务的text有如下返回值：
+	1.nologin，表示用户未登录
+	2.FAULT，表示执行失败
+	3.5，表示通知用户更新组织结构(需free)
+	4.8，表示通知用户更新群列表(需free)
+	5.12，表示通知用户更新多人会话列表(需free)
+	6.消息（gzip压缩的二进制数据）
+	  （1）前8byte为数字字符串，表示长度
+	  （2）2byte均为\0（万恶的Sql Server的0x标识符(╯‵□′)╯︵┻━┻_(:з」∠)_）
+	  （3）二进制压缩数据
+	7.其它，都是出错
+	*/
+		
         case BUS_LOGIN:	//用户登录
             text=Login(cm->sender,cm->context);
             break;
@@ -264,15 +326,15 @@ CRM Business_deal(CM cm,int fd)
             break;
         case BUS_INDIVIDUAL_SESSION:
             if(NULL==(text=Check_Logined(cm->sender)))
-                text=Talk(CTRLPERSON,cm->sender,cm->recver,cm->context,cm->len);
+                text=Talk(CTRLPERSON,cm->sender,cm->recver,cm->context,cm->len,cm->dev_type);
             break;
         case BUS_GROUP_SESSION:
             if(NULL==(text=Check_Logined(cm->sender)))
-                text=Talk(CTRLGROUP,cm->sender,cm->recver,cm->context,cm->len);
+                text=Talk(CTRLGROUP,cm->sender,cm->recver,cm->context,cm->len,cm->dev_type);
             break;
         case BUS_MULTIPLAYER_SESSION:
             if(NULL==(text=Check_Logined(cm->sender)))
-                text=Talk(CTRLMUTIL,cm->sender,cm->recver,cm->context,cm->len);
+                text=Talk(CTRLMUTIL,cm->sender,cm->recver,cm->context,cm->len,cm->dev_type);
             break;
         case BUS_OL_MOBILE:
             if(NULL==(text=Check_Logined(cm->sender)))
@@ -402,6 +464,11 @@ CRM Business_deal(CM cm,int fd)
 			if(NULL==(text=Check_Logined(cm->sender)))
                 text=Check_Photo(cm->sender,cm->context);
 			break;
+		case BUS_CIMS_ID:
+			if(NULL==(text=Check_Logined(cm->sender)))
+                text=Get_CIMS_ID(cm->sender);
+			flag=1;
+			break;
     }
     if(NULL!=text)
     {
@@ -418,16 +485,7 @@ CRM Business_deal(CM cm,int fd)
         else
         {
 			uint datalen=atoi(text);
-			if(datalen<=0)	//返回出错
-			{
-				len=sizeof(uint32_t)+1;
-				crm=(CRM)malloc(len);
-				memset(crm,0,len);
-				uint elen=strlen(text);
-				memcpy(crm->context,text,elen);
-				crm->len=elen;
-			}
-			else
+			if(datalen>0)
 			{
 				len=datalen+sizeof(uint32_t)+9;
 				crm=(CRM)malloc(len);
@@ -435,6 +493,7 @@ CRM Business_deal(CM cm,int fd)
 				memcpy(crm->context,text+10,datalen);
 				crm->len=datalen;
 			}
+			free(text);
         }
         if(flag==1&&0!=strcmp(text,"nologin")&&0!=strcmp(text,"FAULT")&&0!=strcmp(text,"OK"))
             free(text);

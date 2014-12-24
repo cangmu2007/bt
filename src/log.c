@@ -51,7 +51,7 @@ int writelog(char* msg)
 	return ret;
 }
 
-int closelog()
+void closelog()
 {
 	close(fd);
 }

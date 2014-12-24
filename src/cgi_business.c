@@ -16,7 +16,7 @@ char* Login(char* loginer,char* password)
 		return "login_error";
     if(insert_point(user,loginer,-1)<0)
         return "FAULT";
-    MS32CHARINFO ms32= {0};
+    MS32CHARINFO ms32={0};
     ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGIN, REQUEST, NONE,32);
     strcpy(ms32.id,loginer);
     if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
@@ -41,7 +41,7 @@ char* Cancellation(char* loginer)
     if(-1==delete_point_log(user,ul))
         return "FAULT";
     Zero_RE(fd,"CANCEL",6,0);
-    MS32CHARINFO ms32= {0};
+    MS32CHARINFO ms32={0};
     ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGOUT, REQUEST, NONE,32);
     strcpy(ms32.id,loginer);
     MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1);
@@ -119,14 +119,24 @@ char* ServerPush(char* loginer,char* msg,int fd,UL ul)
     }
     if(update_point_fd(user,loginer,fd)<0)
         return "FAULT";
-    //查数据库里的离线信息
-    char* re_msg=search_info(loginer,CTRLALL);
-    if(re_msg!=NULL)
+    char* re_msg=GetImf(ul,loginer);
+	if(re_msg!=NULL)
 	{
-		return xml_compress(re_msg,1);
-        //return re_msg;
+		return re_msg;
 	}
-    return GetImf(ul,loginer);
+	else
+	{
+		//查数据库里的离线信息
+		re_msg=search_info(loginer,CTRLALL);
+		if(re_msg!=NULL)
+		{
+			return xml_compress(re_msg,1);
+		}
+		else
+		{
+			return NULL;
+		}
+	}
 }
 
 char* GetImf(UL ul,char* loginer)
@@ -249,13 +259,14 @@ char* NewGroup(char* loginer,char* context)
         if(NULL!=usr)
             if(usr->fd!=-1)
             {
-                if(usr->flag==1)
+				char* con="update 8";
+				if(usr->flag==1)
                 {
-                    Zero_RE(usr->fd,"8",1,1);
+                    Zero_RE(usr->fd,con,strlen(con),1);
                     usr->flag=0;
                 }
                 else
-                    insert_imf(usr->il,"8",1);
+                    insert_imf(usr->il,con,strlen(con));
             }
         len+=strlen(tmp)+1;
         memset(tmp,0,32);
@@ -296,13 +307,14 @@ char* NewMulti(char* loginer,char* context)
         if(NULL!=usr)
             if(usr->fd!=-1)
             {
+				char* con="update 12";
                 if(usr->flag==1)
                 {
-                    Zero_RE(usr->fd,"12",2,1);
+                    Zero_RE(usr->fd,con,strlen(con),1);
                     usr->flag=0;
                 }
                 else
-                    insert_imf(usr->il,"12",2);
+                    insert_imf(usr->il,con,strlen(con));
             }
         len+=strlen(tmp)+1;
         memset(tmp,0,32);
@@ -375,10 +387,10 @@ char* GetPicture(char* pid)
 		return pic;
 }
 
-char* Talk(int type,char* src,char* des,char* context,uint32_t llen)
+char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t systype)
 {
     int ret=-1,num=-1,t;
-    if((t=insert_talklist(src,des,context,llen,type))==-1)
+    if((t=insert_talklist(src,des,context,llen,type,systype))==-1)
 		return "FAULT";
     if(t==0)
     {
@@ -386,6 +398,7 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen)
         {
             MS64_CHARINFO ms64=(MS64_CHARINFO)malloc(sizeof(MS64CHARINFO)+llen);
             memset(ms64,0,sizeof(MS64CHARINFO)+llen);
+			//ms64->sys_type=systype;
             strcpy(ms64->srcid,src);
             strcpy(ms64->desid,des);
             memcpy(ms64->context,context,llen);
@@ -398,6 +411,7 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen)
         {
             MS_GROUP mg= (MS_GROUP)malloc(sizeof(MSGROUP)+llen);
             memset(mg,0,sizeof(MSGROUP)+llen);
+			//mg->sys_type=systype;
             strcpy(mg->uid,src);
             mg->gid=atoi(des);
             memcpy(mg->context,context,llen);
@@ -447,19 +461,16 @@ char* Check_Photo(char* uid,char* md5)
 		return "FAULT";
 }
 
-/*char* GetImportList(char* id,char* context)
+char* Get_CIMS_ID(char* uid)
 {
-	char post[1024]={0};
-	sprintf(post,"<?xml version=\"1.0\" encoding=\"utf-8\"?><soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Header><MobileSoapHeader xmlns=\"http://tempuri.org/\"><UserName>cimsmobileuser</UserName><Password>horju2014WPQR$!)@</Password></MobileSoapHeader></soap:Header><soap:Body><GetList xmlns=\"http://tempuri.org/\"><userID>%s</userID><pageIndex>%d</pageIndex><pageSize>20</pageSize></GetList></soap:Body></soap:Envelope>",id,atoi(context));
-	return NULL;
+	char* ret=getCIMS_id(uid);
+	if(ret!=NULL)
+		return ret;
+	else
+		return "FAULT";
 }
 
-char* GetImportDetail(char* id,char* context)
-{
-	return NULL;
-}*/
-
-void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl)
+/*void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl)
 {
     char* pi = pSrcIn;
     char* po = pDstOut;
@@ -519,4 +530,4 @@ int Count(char *const a,char *const b)
         }
     }
     return count;
-}
+}*/

@@ -1,7 +1,8 @@
 //用户在线链表操作
 
 #include "head.h"
-pthread_mutex_t mutex_ul=PTHREAD_MUTEX_INITIALIZER;	//用户链表处理线程锁
+static pthread_mutex_t mutex_ul=PTHREAD_MUTEX_INITIALIZER;	//用户链表处理线程锁
+static pthread_mutex_t mutex_ol=PTHREAD_MUTEX_INITIALIZER;	//移动在线用户刷新线程锁
 
 void DeleteList(IL head)
 {
@@ -22,6 +23,13 @@ void DeleteULList(UL head)
     while(DElem)
     {
         next = DElem->next;
+		DeleteList(DElem->il);
+		free(DElem->il);
+		if(DElem->fd!=-1)
+		{
+			close(fd);
+			fd=-1;
+		}
         free(DElem);
         DElem = next;
     }
@@ -33,8 +41,8 @@ void insert_imf(IL head,char* context,uint len)
 	pthread_mutex_lock(&mutex_ul);
     while(p&&p->next)
         p=p->next;
-    IL new_ele=(IL)malloc(sizeof(IMF_LIST)+len);
-    memset(new_ele,0,sizeof(IMF_LIST)+len);
+    IL new_ele=(IL)malloc(sizeof(IMF_LIST)+len+1);
+    memset(new_ele,0,sizeof(IMF_LIST)+len+1);
     new_ele->len=len;
     memcpy(new_ele->context,context,len);
     new_ele->next=NULL;
