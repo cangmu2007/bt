@@ -19,9 +19,9 @@ int Init_Mi_TCP(char* ip,int port)
 	int keepIdle = 1000;
 	int keepInterval = 30;
 	int keepCount = 10;
-	setsockopt(mi_fd,SOL_TCP, TCP_KEEPIDLE,(void *)&keepIdle,sizeof(keepIdle));
-	setsockopt(mi_fd,SOL_TCP,TCP_KEEPINTVL,(void *)&keepInterval,sizeof(keepInterval));
-	setsockopt(mi_fd,SOL_TCP, TCP_KEEPCNT,(void *)&keepCount,sizeof(keepCount));
+	setsockopt(mi_fd,IPPROTO_TCP, 4,(void *)&keepIdle,sizeof(keepIdle));
+	setsockopt(mi_fd,IPPROTO_TCP,5,(void *)&keepInterval,sizeof(keepInterval));
+	setsockopt(mi_fd,IPPROTO_TCP, 6,(void *)&keepCount,sizeof(keepCount));
 
 	struct sockaddr_in MI_addr;
     memset(&MI_addr, 0,sizeof(MI_addr));    //TCP¡¨Ω”µÿ÷∑

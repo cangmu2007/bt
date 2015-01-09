@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <sys/un.h>
 #include <netinet/in.h>
-#include <malloc.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>

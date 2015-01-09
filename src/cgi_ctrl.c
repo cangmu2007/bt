@@ -25,7 +25,7 @@ void* CGI_Link(void* nfd)   //CGI连接处理
     int fd=*((int*)nfd);
 	uint32_t size=0;
     int ret=-1;
-    while(((ret=recv(fd,(char*)&size,sizeof(uint32_t),0))<0)&&((errno == EAGAIN||errno == EINTR)));	//接收包的长度
+    while(((ret=recv(fd,(char*)&size,sizeof(uint32_t),0))<0)&&(errno == EAGAIN||errno == EINTR));	//接收包的长度
 	if(ret!=sizeof(uint32_t)||size<=sizeof(uint32_t))
     {
         perror("CGI recv2");

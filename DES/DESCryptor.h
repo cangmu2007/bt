@@ -2,7 +2,7 @@
 #define __DESC_H__
 
 #include "des.h"
-#include <malloc.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 
