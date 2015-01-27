@@ -234,7 +234,9 @@ char* NewGroup(char* loginer,char* context)
     //unsigned char* data=UrlDecode(context);
     char name[32]= {0},theme[128]= {0},id[512]= {0};
     if(sscanf(context,"%*[^=]=%[^;]%*[^=]=%[^;]%*[^=]=%s",name,theme,id)!=3)
+	{
         return "FAULT";
+	}
     //free(data);
     MSGROUP mr= {0};
     mr.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_CREATE, REQUEST, NONE,sizeof(MSGROUP));

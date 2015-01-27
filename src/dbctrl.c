@@ -77,9 +77,20 @@ int insert_group(char* uid,char* name,char* theme,char* id,int* gid,int type)
 {
 	char SQL[256]= {0};
 	if(type==CTRLGROUP)
-		sprintf(SQL,"insert into group_info(Name,Notify) values('%s','%s')",name,theme);
+	{
+		if(theme==NULL||strcmp(theme,"null")==0)
+		{
+			sprintf(SQL,"insert into group_info(Name) values('%s')",name);
+		}
+		else
+		{
+			sprintf(SQL,"insert into group_info(Name,Notify) values('%s','%s')",name,theme);
+		}
+	}
 	else
+	{
 		sprintf(SQL,"insert into mutil_info(Name,MutilBuilder) values('%s','%s')",theme,uid);
+	}
 
 /*****************************************新增连接池**************************************/
 	DbprocHandler tdbh=SelectDbproc();

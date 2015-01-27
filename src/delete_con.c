@@ -26,6 +26,9 @@ int main(int argc,char *argv[])
 	char* SQL_USER=cfg_getstr(cfg,"DB_LOGIN.SQL_USER");
 	char* SQL_PASSWD=cfg_getstr(cfg,"DB_LOGIN.SQL_PASSWD");
 
+	cfg_free(cfg);
+	cfg=NULL;
+
 	 //初始化db-library 
     dbinit(); 
         

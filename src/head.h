@@ -378,7 +378,7 @@ pthread_mutex_t mutex,mutex_cgi; //线程锁，防止多个线程同时发送消息给中间件和CGI
 int mi_fd;  //中间件套接字
 int cgi_fd; //CGI域套接字服务端文件描述符
 UL user;    //用户在线链表
-sem_t mi_send_recv_ctrl;    //中间件启动连接控制
+sem_t* mi_send_recv_ctrl;    //中间件启动连接控制
 pthread_t rad_thread;	//中间件接收线程
 
 char* org_stu;  //组织结构

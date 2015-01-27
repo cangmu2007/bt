@@ -4,7 +4,7 @@ void OnMiddleLogin(unsigned char result)
 {
     if(RESPONSE==result)
     {
-        sem_post(&mi_send_recv_ctrl);
+        sem_post(mi_send_recv_ctrl);
     }
 }
 
@@ -12,7 +12,7 @@ void OnMiddleSchema(unsigned char result)
 {
     if(RESPONSE==result)
     {
-        sem_post(&mi_send_recv_ctrl);
+        sem_post(mi_send_recv_ctrl);
     }
 }
 
@@ -35,8 +35,6 @@ void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
     PC_OL=rx;
 
 	check_tcp=0;
-	printf("Flash PC_OL\n");
-	writelog("Flash PC_OL");
 
 	/*不再立刻通知客户端10-10
     UL p=user->next;
