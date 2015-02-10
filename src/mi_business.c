@@ -4,7 +4,7 @@ void OnMiddleLogin(unsigned char result)
 {
     if(RESPONSE==result)
     {
-        sem_post(mi_send_recv_ctrl);
+        sem_post(&mi_send_recv_ctrl);
     }
 }
 
@@ -12,7 +12,7 @@ void OnMiddleSchema(unsigned char result)
 {
     if(RESPONSE==result)
     {
-        sem_post(mi_send_recv_ctrl);
+        sem_post(&mi_send_recv_ctrl);
     }
 }
 
@@ -25,6 +25,10 @@ void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
     if(len>0)
     {
         rx=(char*)malloc(len);
+		if(NULL==rx)
+		{
+			rx=NULL_OL();
+		}
         memcpy(rx,srcdata+2*sizeof(uint32_t),len);
     }
     else
@@ -55,7 +59,7 @@ void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
 
 int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
 {
-    int ret=0;
+    int ret=-1;
     char* context=NULL;
     RMS64_CHARINFO ms64=NULL;
     RMS_GROUP mg=NULL;
@@ -65,6 +69,10 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
     {
         case CTRLPERSON:
             ms64=(RMS64_CHARINFO)malloc(srclen);
+			if(NULL==ms64)
+			{
+				return ret;
+			}
             memcpy(ms64,srcdata,srclen);
             context=search_info(ms64->desid,CTRLPERSON);
             ul=get_point(user,ms64->desid);
@@ -82,6 +90,10 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
             break;
         case CTRLGROUP:
             mg=(RMS_GROUP)malloc(srclen);
+			if(NULL==mg)
+			{
+				return ret;
+			}
             memcpy(mg,srcdata,srclen);
             //每个用户都发
             ret=get_group_mutil_user(mg->uid,mg->gid,CTRLGROUP);
@@ -89,6 +101,10 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
             break;
         case CTRLMUTIL:
             mg=(RMS_GROUP)malloc(srclen);
+			if(NULL==mg)
+			{
+				return ret;
+			}
             memcpy(mg,srcdata,srclen);
             //每个用户都发
             ret=get_group_mutil_user(mg->uid,mg->gid,CTRLMUTIL);
@@ -142,10 +158,14 @@ int Link_Mi()
 
 int Send_MO_OL()
 {
-    int ret=0;
+    int ret=-1;
     flush_list(user);
     uint len=strlen(MO_OL)+1;
     MSEXTAPP_REG_REQ sendol=(MSEXTAPP_REG_REQ)malloc(sizeof(MSEXTAPPREG_REQ)+len);
+	if(NULL==sendol)
+	{
+		return ret;
+	}
     memset(sendol,0,sizeof(MSEXTAPP_REG_REQ)+len);
     memcpy(sendol->context,MO_OL,len-1);
     sendol->bp=BsnsPacket_init(MC_EXTAPP_SCHEMA, REQUEST,NONE, sizeof(uint32_t)+len-1);

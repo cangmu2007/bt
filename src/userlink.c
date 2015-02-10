@@ -35,19 +35,25 @@ void DeleteULList(UL head)
     }
 }
 
-void insert_imf(IL head,char* context,uint len)
+int insert_imf(IL head,char* context,uint len)
 {
     IL p=head;
 	pthread_mutex_lock(&mutex_ul);
     while(p&&p->next)
         p=p->next;
     IL new_ele=(IL)malloc(sizeof(IMF_LIST)+len+1);
-    memset(new_ele,0,sizeof(IMF_LIST)+len+1);
-    new_ele->len=len;
-    memcpy(new_ele->context,context,len);
-    new_ele->next=NULL;
-    p->next=new_ele;
+	if(NULL==new_ele)
+	{
+		pthread_mutex_unlock(&mutex_ul);
+		return -1;
+	}
+	memset(new_ele,0,sizeof(IMF_LIST)+len+1);
+	new_ele->len=len;
+	memcpy(new_ele->context,context,len);
+	new_ele->next=NULL;
+	p->next=new_ele;
 	pthread_mutex_unlock(&mutex_ul);
+	return 0;
 }
 
 IL get_imf(IL head)
@@ -211,11 +217,21 @@ int insert_point(UL head,char* loginer,int fd)  //用户在线链表增加节点
 	if(ret==0)
 	{
 		s=(UL)malloc(sizeof(User_Linking));
+		if(NULL==s)
+		{
+			pthread_mutex_unlock(&mutex_ul);
+			return -1;
+		}
 		memset(s,0,sizeof(User_Linking));
 		strcpy(s->id,loginer);
 		s->fd=fd;
 		s->next=NULL;
 		IL il=(IL)malloc(sizeof(IMF_LIST));
+		if(NULL==il)
+		{
+			pthread_mutex_unlock(&mutex_ul);
+			return -1;
+		}
 		memset(il,0,sizeof(IMF_LIST));
 		il->next=NULL;
 		s->il=il;
@@ -242,6 +258,10 @@ int get_len(UL head)    //获取用户在线链表节点数量
 char* NULL_OL()
 {
     char* init_ol=(char*)malloc(56); //初始化在线列表
+	if(NULL==init_ol)
+	{
+		return NULL;
+	}
     memset(init_ol,0,56);
     strcpy(init_ol,MO_XML_HEAD);
     strcat(init_ol,"<online></online>");
@@ -251,24 +271,41 @@ char* NULL_OL()
 void flush_list(UL head)
 {
     char* list=(char*)malloc(60);
+	if(NULL==list)
+	{
+		return;
+	}
     memset(list,0,60);
     strcpy(list,MO_XML_HEAD);
     strcat(list,"<online type=\"2\">");
     char temp[48]= {0};
     UL p=head->next;
     uint tlen,len=strlen(list);
+	char* tmp=NULL;
     while(p)
     {
         sprintf(temp,"<user>%s</user>",p->id);
         tlen=strlen(temp);
-        list=(char*)realloc(list,len+tlen+1);
+        tmp=(char*)realloc(list,len+tlen+1);
+		if(!tmp)
+		{
+			break;
+		}
+		list=tmp;
         memset(list+len,0,tlen+1);
         strcpy(list+len,temp);
         len=len+tlen;
         memset(temp,0,48);
         p=p->next;
     }
-    list=(char*)realloc(list,len+10);
+    tmp=(char*)realloc(list,len+10);
+	if(!tmp)
+	{
+		free(list);
+		list=NULL;
+		return;
+	}
+	list=tmp;
 	memset(list+len,0,10);
     strcpy(list+len,"</online>");
     pthread_mutex_lock(&mutex_ol);  //上锁

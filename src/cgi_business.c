@@ -12,8 +12,11 @@ char* Login(char* loginer,char* password)
 {
     if(NULL!=get_point(user,loginer))
         return loginer;
-    if(1!=check_up(loginer,password))
+	int ret=check_up(loginer,password);
+    if(ret==0)
 		return "login_error";
+	else if(ret==-1)
+		return "FAULT";
     if(insert_point(user,loginer,-1)<0)
         return "FAULT";
     MS32CHARINFO ms32={0};
@@ -150,6 +153,10 @@ char* GetImf(UL ul,char* loginer)
         return NULL;
     }
     char* re_msg=(char*)malloc(il->len);
+	if(NULL==re_msg)
+	{
+		return "FAULT";
+	}
     memcpy(re_msg,il->context,il->len);
     return re_msg;
 }
@@ -234,9 +241,7 @@ char* NewGroup(char* loginer,char* context)
     //unsigned char* data=UrlDecode(context);
     char name[32]= {0},theme[128]= {0},id[512]= {0};
     if(sscanf(context,"%*[^=]=%[^;]%*[^=]=%[^;]%*[^=]=%s",name,theme,id)!=3)
-	{
         return "FAULT";
-	}
     //free(data);
     MSGROUP mr= {0};
     mr.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_CREATE, REQUEST, NONE,sizeof(MSGROUP));
@@ -329,6 +334,10 @@ char* AddMulti(char* context)
     int ret=-1;
     uint len=strlen(context);
     MSEXTAPP_REG_REQ mm= (MSEXTAPP_REG_REQ)malloc(sizeof(MSEXTAPPREG_REQ)+len);
+	if(NULL==mm)
+	{
+		return "FAULT";
+	}
     memset(mm,0,sizeof(MSEXTAPPREG_REQ)+len);
     mm->bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_ADDUSER, REQUEST, NONE,sizeof(uint32_t)+len);
     if(sscanf(context,"%*[^=]=%d;%*[^=]=%s",mm->ntype,mm->context)!=2)
@@ -392,13 +401,17 @@ char* GetPicture(char* pid)
 char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t systype)
 {
     int ret=-1,num=-1,t;
-    if((t=insert_talklist(src,des,context,llen,type,systype))==-1)
+    if((t=insert_talklist(src,des,context,llen,type,systype))<0)
 		return "FAULT";
     if(t==0)
     {
         if(CTRLPERSON==type)  //个人会话
         {
             MS64_CHARINFO ms64=(MS64_CHARINFO)malloc(sizeof(MS64CHARINFO)+llen);
+			if(NULL==ms64)
+			{
+				return "FAULT";
+			}
             memset(ms64,0,sizeof(MS64CHARINFO)+llen);
 			//ms64->sys_type=systype;
             strcpy(ms64->srcid,src);
@@ -412,6 +425,10 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t sys
         else    //群/多人会话
         {
             MS_GROUP mg= (MS_GROUP)malloc(sizeof(MSGROUP)+llen);
+			if(NULL==mg)
+			{
+				return "FAULT";
+			}
             memset(mg,0,sizeof(MSGROUP)+llen);
 			//mg->sys_type=systype;
             strcpy(mg->uid,src);
@@ -423,8 +440,6 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t sys
             free(mg);
         }
     }
-    if(t==-2)
-        return "FAULT";
     if((t==0)&&(-1==ret||-1==num))
         return "FAULT";
     return "OK";

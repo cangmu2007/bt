@@ -136,7 +136,7 @@ int CTRLDB(DbprocHandler dbh,char* SQL_CTRL)		//操作数据库
 	{
 		printf("ctrl %d dbproc\n",dbh->num);	
 		ret=-1;
-		if(ReConnect(dbh)<0)
+		/*if(ReConnect(dbh)<0)
 		{
 			dbh->flg=0;
 			if(linkcount>0)
@@ -145,7 +145,7 @@ int CTRLDB(DbprocHandler dbh,char* SQL_CTRL)		//操作数据库
 		else
 		{
 			printf("ctrl reconnect %d dbproc\n",dbh->num);
-		}
+		}*/
 	}
 	dbflag=1;
 	return ret;
@@ -225,13 +225,13 @@ DbprocHandler SelectDbproc()		//选择连接
 				dbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-				printf("select FAIL off %d dbproc!\n",dbh->num);
+				printf("select FAIL %d dbproc!\n",dbh->num);
 			}
 		}
 		else
 		{
 			flg=1;
-			printf("select flg off %d dbproc!\n",dbh->num);
+			printf("select flg %d dbproc!\n",dbh->num);
 			if(linkcount>0)
 				linkcount--;
 		}

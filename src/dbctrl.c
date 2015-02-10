@@ -11,6 +11,10 @@ int check_up(char *uid,char *pass)
 		tlen=len+(8-temp);
 	unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 	unsigned char* des=(unsigned char*)malloc(tlen);
+	if(NULL==des)
+	{
+		return -1;
+	}
 	memset(des,0,tlen);
 	FinalD3desEncryption(deskey,pass , des , len);
 	sprintf(SQL,"select id from customer_info where UserID='%s' and UserPassword='",uid);
@@ -22,7 +26,6 @@ int check_up(char *uid,char *pass)
 	}
 	strcat(SQL,"\'");
 	free(des);
-
 /*****************************************新增连接池**************************************/
 	DbprocHandler tdbh=SelectDbproc();
 	if(NULL==tdbh)
@@ -36,7 +39,6 @@ int check_up(char *uid,char *pass)
 		return -1;
 	}
 /*****************************************************************************************/
-
 	int UID=0;
 	DBINT res;
 	if((res=dbresults(dbprocess))!=NO_MORE_RESULTS)
@@ -44,6 +46,7 @@ int check_up(char *uid,char *pass)
 		if(res==SUCCEED)
 		{
 			dbbind(dbprocess, 1, INTBIND, (DBINT)0, (BYTE*)&UID);
+			//多次和服务器断开连接后，dbnextrow()会出现查询不到结果的情况，一段时间后自动恢复
 			if(dbnextrow(dbprocess) != NO_MORE_ROWS)
 			{
 				if(UID>0)
@@ -55,7 +58,7 @@ int check_up(char *uid,char *pass)
 		}
 	}
 	tdbh->ctrling=0;
-	return -1;
+	return 0;
 }
 
 int set_group(char* uid,int gid,int type)
@@ -463,6 +466,11 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if((templen=imagelen%8)>0)
 			imagelen=imagelen+(8-templen);
 		unsigned char* imagedes=(unsigned char*)malloc(imagelen);
+		if(NULL==imagedes)
+		{
+			tdbh->ctrling=0;
+			return -1;
+		}
 		memset(imagedes,0,imagelen);
 		FinalD3desEncryption(deskey,context+10, imagedes, len-23);
 
@@ -499,12 +507,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if(dbsqlexec(dbprocess) == FAIL)
 		{
 			printf("dbsqlexec error!\n");
-			if(ReConnect(tdbh)<0)
+			/*if(ReConnect(tdbh)<0)
 			{
 				tdbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-			}
+			}*/
 			tdbh->ctrling=0;
 			dbflag=1;
 			return -1;
@@ -520,12 +528,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if(dbsqlexec(dbprocess) == FAIL)
 		{
 			printf("dbsqlexec error!\n");
-			if(ReConnect(tdbh)<0)
+			/*if(ReConnect(tdbh)<0)
 			{
 				tdbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-			}
+			}*/
 			tdbh->ctrling=0;
 			dbflag=1;
 			return -1;
@@ -537,6 +545,11 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 			if(dbnextrow(dbprocess) != NO_MORE_ROWS)
 			{
 				ndata=(char*)malloc(48);
+				if(NULL==ndata)
+				{
+					tdbh->ctrling=0;
+					return -1;
+				}
 				memset(ndata,0,48);
 				sprintf(ndata,"<img src=\"%d%s\"/>",pid,ext);
 				memset(SQL,0,256);
@@ -557,6 +570,11 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if((temp=clen%8)>0)
 			clen=clen+(8-temp);
 		cdes=(unsigned char*)malloc(clen);
+		if(NULL==cdes)
+		{
+			tdbh->ctrling=0;
+			return -1;
+		}
 		memset(cdes,0,clen);
 		FinalD3desEncryption(deskey,d , cdes , blen);
 		sprintf(SQL,"insert into ctm_ctm_msg_mt(DstUserId,SrcUserId,DataLen,Sendtime,Data) values('%s','%s',%u,getdate(),0x",des,src,clen,cdes);
@@ -569,12 +587,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if(dbsqlexec(dbprocess) == FAIL)
 		{
 			printf("dbsqlexec error!\n");
-			if(ReConnect(tdbh)<0)
+			/*if(ReConnect(tdbh)<0)
 			{
 				tdbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-			}
+			}*/
 			dbflag=1;
 			tdbh->ctrling=0;
 			free(cdes);
@@ -585,6 +603,13 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		{
 			uint tlen=strlen(d);
 			MS64_CHARINFO ms64=(MS64_CHARINFO)malloc(sizeof(MS64CHARINFO)+tlen);
+			if(NULL==ms64)
+			{
+				tdbh->ctrling=0;
+				free(cdes);
+				cdes=NULL;
+				return -1;
+			}
 			memset(ms64,0,sizeof(MS64CHARINFO)+tlen);
 			//ms64->sys_type=systype;
 			strcpy(ms64->srcid,src);
@@ -630,7 +655,14 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 				while (dbnextrow(dbprocess) != NO_MORE_ROWS)
 				{
 					if(t>0)
-						guser=(char*)realloc(guser,32*(t+1));
+					{
+						char* guser_temp=(char*)realloc(guser,32*(t+1));
+						if(!guser_temp)
+						{
+							break;
+						}
+						guser=guser_temp;
+					}
 					memset(guser+32*t,0,32);
 					strcpy(guser+32*t,userid);
 					memset(userid,0,32);
@@ -649,6 +681,11 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if((temp=tlen%8)>0)
 			tlen=tlen+(8-temp);
 		cdes=(unsigned char*)malloc(tlen);
+		if(NULL==cdes)
+		{
+			tdbh->ctrling=0;
+			return -1;
+		}
 		memset(cdes,0,tlen);
 		FinalD3desEncryption(deskey,d , cdes , blen);
 		for(j=0; j<t; j++)
@@ -666,12 +703,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 			if(dbsqlexec(dbprocess) == FAIL)
 			{
 				printf("dbsqlexec error!\n");
-			if(ReConnect(tdbh)<0)
-			{
-				tdbh->flg=0;
-				if(linkcount>0)
-				linkcount--;
-			}
+				/*if(ReConnect(tdbh)<0)
+				{
+					tdbh->flg=0;
+					if(linkcount>0)
+						linkcount--;
+				}*/
 				dbflag=1;
 				tdbh->ctrling=0;
 				
@@ -684,6 +721,11 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		{
 			uint tlen=strlen(d);
 			MS_GROUP mg= (MS_GROUP)malloc(sizeof(MSGROUP)+tlen);
+			if(NULL==mg)
+			{
+				tdbh->ctrling=0;
+				return -1;
+			}
 			memset(mg,0,sizeof(MSGROUP)+tlen);
 			//mg->sys_type=systype;
 			strcpy(mg->uid,src);
@@ -754,6 +796,11 @@ char* get_group_or_mutil(char* id,int type)
 		return NULL;
 	}
 	char* results=(char*)malloc(52);
+	if(NULL==results)
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
 	memset(results,0,52);
 	strcpy(results,MO_XML_HEAD);
 	strcat(results,"<conpany>");
@@ -783,7 +830,12 @@ char* get_group_or_mutil(char* id,int type)
 					memset(Name,0,48);
 					len=strlen(results);
 					tlen=strlen(tmp);
-					results=(char*)realloc(results,(len+1+tlen));
+					char* temp=(char*)realloc(results,(len+1+tlen));
+					if(!temp)
+					{
+						break;
+					}
+					results=temp;
 					memset(results+len,0,tlen+1);
 					strcat(results,tmp);
 					memset(tmp,0,1536);
@@ -800,7 +852,12 @@ char* get_group_or_mutil(char* id,int type)
 					memset(Notify,0,1024);
 					len=strlen(results);
 					tlen=strlen(tmp);
-					results=(char*)realloc(results,(len+1+tlen));
+					char* temp=(char*)realloc(results,(len+1+tlen));
+					if(!temp)
+					{
+						break;
+					}
+					results=temp;
 					memset(results+len,0,tlen+1);
 					strcat(results,tmp);
 					memset(tmp,0,1536);
@@ -810,7 +867,14 @@ char* get_group_or_mutil(char* id,int type)
 	}
 	tdbh->ctrling=0;
 	len=strlen(results);
-	results=(char*)realloc(results,len+11);
+	char* tmp_results=(char*)realloc(results,len+11);
+	if(!tmp_results)
+	{
+		free(results);
+		results=NULL;
+		return NULL;
+	}
+	results=tmp_results;
 	memset(results+len,0,11);
 	strcat(results,"</conpany>");
 	return results;
@@ -836,6 +900,11 @@ char* get_member(int gid,int type)
 		return NULL;
 	}
 	char *xml=(char*)malloc(52);
+	if(NULL==xml)
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
 	memset(xml,0,52);
 	strcpy(xml,MO_XML_HEAD);
 	strcat(xml,"<conpany>");
@@ -854,7 +923,12 @@ char* get_member(int gid,int type)
 				memset(UID,0,32);
 				len=strlen(xml);
 				tlen=strlen(tmp);
-				xml=(char*)realloc(xml,len+1+tlen);				
+				char* t_xml=(char*)realloc(xml,len+1+tlen);
+				if(!t_xml)
+				{
+					break;
+				}
+				xml=t_xml;
 				memset(xml+len,0,tlen+1);
 				strcat(xml,tmp);
 				memset(tmp,0,64);
@@ -863,7 +937,14 @@ char* get_member(int gid,int type)
 	}
 	tdbh->ctrling=0;
 	len=strlen(xml);
-	xml=(char*)realloc(xml,len+11);
+	char* temp_xml=(char*)realloc(xml,len+11);
+	if(!temp_xml)
+	{
+		free(xml);
+		xml=NULL;
+		return NULL;
+	}
+	xml=temp_xml;
 	memset(xml+len,0,11);
 	strcat(xml,"</conpany>");
 	return xml;
@@ -887,6 +968,11 @@ char* get_info(char* uid)
 /*****************************************************************************************/
 
 	char* xml=(char*)malloc(256);
+	if(NULL==xml)
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
 	memset(xml,0,256);
 	strcpy(xml,MO_XML_HEAD);
 	strcat(xml,"<conpany>");
@@ -959,6 +1045,11 @@ char* get_photo(char* uid)
 				if(dbresults(dbprocess)==SUCCEED)
 				{
 					uint8_t *photo=(uint8_t*)malloc(size+10);
+					if(NULL==photo)
+					{
+						tdbh->ctrling=0;
+						return NULL;
+					}
 					memset(photo,0,size+10);
 					sprintf(photo,"%u",size);
 					dbbind(dbprocess,1,VARYBINBIND,(DBINT)0,(BYTE*)(photo+8));
@@ -1226,6 +1317,11 @@ char* search_info(char* loginer,int type)
 	DBPROCESS *dbprocess=tdbh->dbproc;
 /*****************************************************************************************/
 	char* xml=(char*)malloc(52);
+	if(NULL==xml)
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
 	memset(xml,0,52);
 	strcpy(xml,MO_XML_HEAD);
 	strcat(xml,"<conpany>");
@@ -1257,14 +1353,19 @@ char* search_info(char* loginer,int type)
 					sprintf(tmp,"<message><sender>%s</sender><type>1</type><id>%d</id><typeid>null</typeid><time>%s</time><context><![CDATA[%s]]></context></message>",SrcUserId,mid,SendTime,dData);
 					len=strlen(xml);
 					tlen=strlen(tmp);
-					xml=(char*)realloc(xml,len+1+tlen);
+					char* tempxml=(char*)realloc(xml,len+1+tlen);
+					if(!tempxml)
+					{
+						break;
+					}
+					xml=tempxml;
 					memset(xml+len,0,tlen+1);
 					strcpy(xml+len,tmp);
 					memset(tmp,0,tlen);
 					memset(SrcUserId,0,32);
 					memset(SendTime,0,20);
-					memset(Data,0,4098);
-					memset(dData,0,4096);
+					memset(Data,0,4100);
+					memset(dData,0,4100);
 					ret=1;
 				}
 			}
@@ -1302,14 +1403,19 @@ char* search_info(char* loginer,int type)
 						sprintf(tmp,"<message><sender>%s</sender><type>2</type><id>%d</id><typeid>%s</typeid><time>%s</time><context><![CDATA[%s]]></context></message>",SrcUserId,mid,UserId,SendTime,dData);
 						len=strlen(xml);
 						tlen=strlen(tmp);
-						xml=(char*)realloc(xml,len+1+tlen);
+						char* tempxml=(char*)realloc(xml,len+1+tlen);
+						if(!tempxml)
+						{
+							break;
+						}
+						xml=tempxml;
 						memset(xml+len,0,tlen+1);
 						strcpy(xml+len,tmp);
 						memset(tmp,0,tlen);
 						memset(SrcUserId,0,32);
 						memset(SendTime,0,20);
-						memset(Data,0,4098);
-						memset(dData,0,4096);
+						memset(Data,0,4100);
+						memset(dData,0,4100);
 						memset(UserId,0,32);
 						ret=1;
 					}
@@ -1349,14 +1455,19 @@ char* search_info(char* loginer,int type)
 						sprintf(tmp,"<message><sender>%s</sender><type>3</type><id>%d</id><typeid>%s</typeid><time>%s</time><context><![CDATA[%s]]></context></message>",SrcUserId,mid,UserId,SendTime,dData);
 						len=strlen(xml);
 						tlen=strlen(tmp);
-						xml=(char*)realloc(xml,len+1+tlen);
+						char* tempxml=(char*)realloc(xml,len+1+tlen);
+						if(!tempxml)
+						{
+							break;
+						}
+						xml=tempxml;
 						memset(xml+len,0,tlen+1);
 						strcpy(xml+len,tmp);
 						memset(tmp,0,tlen);
 						memset(SrcUserId,0,32);
 						memset(SendTime,0,20);
-						memset(Data,0,4098);
-						memset(dData,0,4096);
+						memset(Data,0,4100);
+						memset(dData,0,4100);
 						memset(UserId,0,32);
 						ret=1;
 					}
@@ -1364,20 +1475,25 @@ char* search_info(char* loginer,int type)
 			}
 		}
 	}
+	tdbh->ctrling=0;
 	if(ret==1)
 	{
 		len=strlen(xml);
-		xml=(char*)realloc(xml,len+12);
+		char* t_xml=(char*)realloc(xml,len+12);
+		if(!t_xml)
+		{
+			goto _ERR;
+		}
+		xml=t_xml;
 		memset(xml+len,0,12);
 		strcat(xml,"</conpany>");
-		tdbh->ctrling=0;
 		return xml;
 	}
 	else
 	{
+_ERR:
 		free(xml);
 		xml=NULL;
-		tdbh->ctrling=0;
 		return NULL;
 	}
 }
@@ -1457,13 +1573,19 @@ int GetOnlineCtms(int dpmid)
 	DBPROCESS *dbprocess=tdbh->dbproc;
 /*****************************************************************************************/
 
+	char* tmp_stu=(char*)malloc(256 + 64);
+	if(NULL==tmp_stu)
+	{
+		tdbh->ctrling=0;
+		return -1;
+	}
 	if(org_stu != NULL && 0 != strcmp(org_stu, MO_XML_HEAD))
 	{
 		free(org_stu);
 		org_stu=NULL;	//free了要把指针指向NULL，不然内存还是不会被释放的
 	}
+	org_stu =tmp_stu;
 	g_nOrgStuLen = 0;
-	org_stu = (char*)malloc(256 + 64);
 	memset(org_stu, 0, 256 + 64);
 	g_nOrgStuLen += 256;
 
@@ -1494,7 +1616,12 @@ int GetOnlineCtms(int dpmid)
 				if(strlen(org_stu) + tlen > g_nOrgStuLen)
 				{
 					newlen = ((tlen/256) + 1)*256;
-					org_stu = (char*)realloc(org_stu, g_nOrgStuLen + newlen + 32);
+					char* tm = (char*)realloc(org_stu, g_nOrgStuLen + newlen + 32);
+					if(!tm)
+					{
+						break;
+					}
+					org_stu=tm;
 					g_nOrgStuLen += newlen;
 				}
 				strcat(org_stu, tmp);
@@ -1543,6 +1670,11 @@ int GetSubDpmsAndWorkersForCvst(int dmpid)
 	int nDmpCount = 0;
 	int nMallocDmpCount = 10;
 	struct _DPMNODE *pDpmNodes = (struct _DPMNODE*)malloc(nMallocDmpCount*sizeof(struct _DPMNODE));
+	if(NULL==pDpmNodes)
+	{
+		tdbh->ctrling=0;
+		return -1;
+	}
 	while((results = dbresults(dbprocess)) != NO_MORE_RESULTS)
 	{
 		if(results == SUCCEED)
@@ -1559,7 +1691,12 @@ int GetSubDpmsAndWorkersForCvst(int dmpid)
 				if(nDmpCount >= nMallocDmpCount)
 				{
 					nMallocDmpCount += 10;
-					pDpmNodes = (struct _DPMNODE*)realloc(pDpmNodes, nMallocDmpCount*sizeof(struct _DPMNODE));
+					struct _DPMNODE* tmpNodes=pDpmNodes = (struct _DPMNODE*)realloc(pDpmNodes, nMallocDmpCount*sizeof(struct _DPMNODE));
+					if(!tmpNodes)
+					{
+						break;
+					}
+					pDpmNodes=tmpNodes;
 				}
 				//SubordinateId = 0;	//不是字符串清不清都无所谓
 				memset(DpmName, 0, 200);
@@ -1581,7 +1718,12 @@ int GetSubDpmsAndWorkersForCvst(int dmpid)
 		if(strlen(org_stu) + tlen > g_nOrgStuLen)
 		{
 			newlen = ((tlen/256) + 1)*256;
-			org_stu = (char*)realloc(org_stu, g_nOrgStuLen + newlen + 32);
+			char* tmp = (char*)realloc(org_stu, g_nOrgStuLen + newlen + 32);
+			if(!tmp)
+			{
+				return -1;
+			}
+			org_stu=tmp;
 			g_nOrgStuLen += newlen;
 		}
 		strcat(org_stu, tmp);
@@ -1641,7 +1783,12 @@ int GetSubDpmsAndWorkersForCvst(int dmpid)
 				if(strlen(org_stu) + tlen2 > g_nOrgStuLen)
 				{
 					newlen2 = ((tlen2/256) + 1)*256;
-					org_stu = (char*)realloc(org_stu, g_nOrgStuLen + newlen2 + 32);
+					char* temp = (char*)realloc(org_stu, g_nOrgStuLen + newlen2 + 32);
+					if(!temp)
+					{
+						break;
+					}
+					org_stu=temp;
 					g_nOrgStuLen += newlen2;
 				}
 				strcat(org_stu, tmp);
@@ -1714,6 +1861,11 @@ char* getCIMS_id(char *uid)
 	}
 /*****************************************************************************************/
 	char* mountid=(char*)malloc(32);
+	if(NULL==mountid)
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
 	memset(mountid,0,32);
 	DBINT res;
 	if((res=dbresults(dbprocess))!=NO_MORE_RESULTS)

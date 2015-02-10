@@ -378,7 +378,7 @@ pthread_mutex_t mutex,mutex_cgi; //线程锁，防止多个线程同时发送消息给中间件和CGI
 int mi_fd;  //中间件套接字
 int cgi_fd; //CGI域套接字服务端文件描述符
 UL user;    //用户在线链表
-sem_t* mi_send_recv_ctrl;    //中间件启动连接控制
+sem_t mi_send_recv_ctrl;    //中间件启动连接控制
 pthread_t rad_thread;	//中间件接收线程
 
 char* org_stu;  //组织结构
@@ -532,7 +532,7 @@ int update_point_fd(UL head,char* loginer,int fd);  //刷新在线用户连接文件描述符
 char* NULL_OL();    //PC端没有用户在线
 UL get_point_fd(UL head,int fd);//获取用户在线链表节点
 void DeleteList(IL head);   //删除通知队列
-void insert_imf(IL head,char* context,uint len);    //新增通知
+int insert_imf(IL head,char* context,uint len);    //新增通知
 int delete_imf(IL head,IL uimf);    //删除通知
 IL get_imf(IL head);    //获取通知
 void flush_list(UL head);   //获取当前在线用户列表

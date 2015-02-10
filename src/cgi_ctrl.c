@@ -95,6 +95,12 @@ void* CGI_Link(void* nfd)   //CGI连接处理
                 pthread_exit((void*)&ret);
             }
             free(cgi_pk);
+
+			if(NULL==crm)
+			{
+				goto _re;
+			}
+
 			uint sent=0;
 			while(sent<crm->len+sizeof(uint32_t))
 			{
@@ -164,6 +170,10 @@ int Zero_RE(int fd,char* context,int len,int type)
 {
     int ret=-1;
     CRM crm=(CRM)malloc(len+sizeof(uint32_t)+1);
+	if(NULL==crm)
+	{
+		return -1;
+	}
     memset(crm,0,len+sizeof(uint32_t)+1);
 
     //查看有无新消息
@@ -478,6 +488,10 @@ CRM Business_deal(CM cm,int fd)
 			uint datalen=strlen(text);
             len=datalen+sizeof(uint32_t)+1;
             crm=(CRM)malloc(len);
+			if(NULL==crm)
+			{
+				return NULL;
+			}
             memset(crm,0,len);
             memcpy(crm->context,text,datalen);
             crm->len=datalen;
@@ -489,6 +503,10 @@ CRM Business_deal(CM cm,int fd)
 			{
 				len=datalen+sizeof(uint32_t)+9;
 				crm=(CRM)malloc(len);
+				if(NULL==crm)
+				{
+					return NULL;
+				}
 				memset(crm,0,len);
 				memcpy(crm->context,text+10,datalen);
 				crm->len=datalen;

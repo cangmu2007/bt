@@ -88,6 +88,11 @@ int main(int argc, char *argv[])
 	}
 	
 	user=(UL)malloc(sizeof(User_Linking));  //初始化用户链表
+	if(NULL==user)
+	{
+		perror("malloc error");
+		exit(-1);
+	}
 	memset(user,0,sizeof(User_Linking));
     user->next=NULL;
     org_stu=NULL;   //初始化组织结构
@@ -435,6 +440,7 @@ void exitbt(int signo)
 	if(org_stu != NULL && 0 != strcmp(org_stu, MO_XML_HEAD))	//清理组织结构
 	{
 		free(org_stu);
+		org_stu=NULL;
 	}
 
 	close(cgi_fd);

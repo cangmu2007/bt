@@ -52,19 +52,19 @@ int Init_Mi_TCP(char* ip,int port)
         return -1;
     }
 
-    /*if(sem_init(mi_send_recv_ctrl, 0, 1)<0)
+    if(sem_init(&mi_send_recv_ctrl, 0, 1)<0)
     {
         perror("sem_init");
 		writelog("sem_init");
         return -1;
-    }*/
+    }
 
-	if((mi_send_recv_ctrl=sem_open("btsem", O_CREAT, 0666, 1))==SEM_FAILED)
+	/*if((mi_send_recv_ctrl=sem_open("btsem", O_CREAT, 0666, 1))==SEM_FAILED)
     {
         perror("sem_open");
 		writelog("sem_open");
         return -1;
-    }
+    }*/
 
     if(pthread_create(&rad_thread, NULL, (void*)MI_Read, NULL)<0)   //创建接收线程
     {
@@ -80,7 +80,7 @@ int Init_Mi_TCP(char* ip,int port)
 		writelog("Failed to connect Middleware");
         return -1;
     }
-    sem_wait(mi_send_recv_ctrl);
+    sem_wait(&mi_send_recv_ctrl);
 
     if(Send_MO_OL()<0)
     {
@@ -88,7 +88,7 @@ int Init_Mi_TCP(char* ip,int port)
 		writelog("Failed to send MO_OL to MI");
 		return -1;
     }
-    sem_wait(mi_send_recv_ctrl);
+    sem_wait(&mi_send_recv_ctrl);
 
     if(SEND_GET_PC_ONLINE_LIST()<0)
     {
@@ -129,21 +129,21 @@ int Exit_Mi_TCP()
         return -1;
     }
 
-    /*if(sem_destroy(mi_send_recv_ctrl)<0)
+    if(sem_destroy(&mi_send_recv_ctrl)<0)
     {
         perror("sem_destroy");
 		writelog("sem_destroy");
         return -1;
-    }*/
+    }
 
-	if(sem_close(mi_send_recv_ctrl)<0)
+	/*if(sem_close(mi_send_recv_ctrl)<0)
 	{
 		perror("sem_close");
 		writelog("sem_close");
         return -1;
 	}
 
-	sem_unlink("btsem");
+	sem_unlink("btsem");*/
 
 	if(mi_fd!=-1)
 	{
@@ -284,7 +284,13 @@ void* MI_Read(void* args)   //TCP接收并做相应处理
             break;
         }
         // 3、收完一个完整的传输包之后根据传输包头的指示进行分包整合
-        pBsns = (char*)realloc(pBsns, nBsnsLen + pTrans->Datalen);
+		char* temp = (char*)realloc(pBsns, nBsnsLen + pTrans->Datalen);
+		if(!temp)
+		{
+			ret=-1;
+			break;
+		}
+        pBsns=temp;
         memcpy(pBsns + nBsnsLen, data, pTrans->Datalen);
         nBsnsLen += pTrans->Datalen;
         if(pTrans->Count == pTrans->Index + 1)
@@ -292,13 +298,14 @@ void* MI_Read(void* args)   //TCP接收并做相应处理
             // 对业务包进行处理
             HandleBusiness((BsPt)pBsns, (const char*)(pBsns + sizeof(BsnsPacket)), nBsnsLen - sizeof(BsnsPacket));
             free(pBsns);
-            pBsns = 0;
+            pBsns = NULL;
             nBsnsLen = 0;
         }
     }
     if(pBsns != 0)
     {
         free(pBsns);
+		pBsns=NULL;
     }
     if(-1==ret)
     {
@@ -352,6 +359,10 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
             break;
         case MC_EXTAPP_GETONLINELIST:
             srcdata=(char*)malloc(srclen+1);
+			if(NULL==srcdata)
+			{
+				break;
+			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
             OnGetOnlineList(pBsns->Result, srcdata, srclen);
@@ -380,6 +391,10 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
             break;
         case MC_BTPC_PTOP_MSG:
 			srcdata=(char*)malloc(srclen+1);
+			if(NULL==srcdata)
+			{
+				break;
+			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
             MSG_RECV(pBsns->Result, srcdata, srclen,CTRLPERSON);
@@ -387,6 +402,10 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
             break;
         case MC_BTPC_GROUP_MSG:
             srcdata=(char*)malloc(srclen+1);
+			if(NULL==srcdata)
+			{
+				break;
+			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
             MSG_RECV(pBsns->Result, srcdata, srclen,CTRLGROUP);
@@ -394,6 +413,10 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
             break;
         case MC_BTPC_MULTI_MSG:
             srcdata=(char*)malloc(srclen+1);
+			if(NULL==srcdata)
+			{
+				break;
+			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
             MSG_RECV(pBsns->Result, srcdata, srclen,CTRLMUTIL);
