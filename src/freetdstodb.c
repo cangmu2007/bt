@@ -136,7 +136,7 @@ int CTRLDB(DbprocHandler dbh,char* SQL_CTRL)		//操作数据库
 	{
 		printf("ctrl %d dbproc\n",dbh->num);	
 		ret=-1;
-		/*if(ReConnect(dbh)<0)
+		if(ReConnect(dbh)<0)
 		{
 			dbh->flg=0;
 			if(linkcount>0)
@@ -145,7 +145,7 @@ int CTRLDB(DbprocHandler dbh,char* SQL_CTRL)		//操作数据库
 		else
 		{
 			printf("ctrl reconnect %d dbproc\n",dbh->num);
-		}*/
+		}
 	}
 	dbflag=1;
 	return ret;
@@ -170,6 +170,7 @@ void CloseConnection()		//关闭数据库，调用前先停止运行ReLinkThread
 		}
 	}
 	free(dph);
+	dph=NULL;
 	dbloginfree(loginrec);
 	dbexit();	//关闭db-lib
 	if(pthread_mutex_destroy(&re_mutex)<0)

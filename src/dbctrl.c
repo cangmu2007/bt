@@ -507,12 +507,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if(dbsqlexec(dbprocess) == FAIL)
 		{
 			printf("dbsqlexec error!\n");
-			/*if(ReConnect(tdbh)<0)
+			if(ReConnect(tdbh)<0)
 			{
 				tdbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-			}*/
+			}
 			tdbh->ctrling=0;
 			dbflag=1;
 			return -1;
@@ -528,12 +528,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if(dbsqlexec(dbprocess) == FAIL)
 		{
 			printf("dbsqlexec error!\n");
-			/*if(ReConnect(tdbh)<0)
+			if(ReConnect(tdbh)<0)
 			{
 				tdbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-			}*/
+			}
 			tdbh->ctrling=0;
 			dbflag=1;
 			return -1;
@@ -587,12 +587,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		if(dbsqlexec(dbprocess) == FAIL)
 		{
 			printf("dbsqlexec error!\n");
-			/*if(ReConnect(tdbh)<0)
+			if(ReConnect(tdbh)<0)
 			{
 				tdbh->flg=0;
 				if(linkcount>0)
 					linkcount--;
-			}*/
+			}
 			dbflag=1;
 			tdbh->ctrling=0;
 			free(cdes);
@@ -703,12 +703,12 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 			if(dbsqlexec(dbprocess) == FAIL)
 			{
 				printf("dbsqlexec error!\n");
-				/*if(ReConnect(tdbh)<0)
+				if(ReConnect(tdbh)<0)
 				{
 					tdbh->flg=0;
 					if(linkcount>0)
 						linkcount--;
-				}*/
+				}
 				dbflag=1;
 				tdbh->ctrling=0;
 				
