@@ -9,7 +9,7 @@ int check_up(char *uid,char *pass)
 	uint tlen;
 	if((temp=len%8)>0)
 		tlen=len+(8-temp);
-	unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
+	//unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 	unsigned char* des=(unsigned char*)malloc(tlen);
 	if(NULL==des)
 	{
@@ -437,7 +437,7 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 	int dbflag=0,flag=0,i,j,temp,ret=0,num=0;
 	unsigned char* d=NULL;
 	unsigned char* ndata=NULL;
-	unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
+	//unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 	unsigned char* cdes=NULL;
 
 /*****************************************新增连接池**************************************/
@@ -1069,7 +1069,7 @@ char* get_photo(char* uid)
 
 char* get_picture(int pid,char* ext)
 {
-	unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
+	//unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 	char SQL[128]= {0};
 	sprintf(SQL,"select ImageLen,DataType from andriod_image where id=%d and ImageExt='.%s'",pid,ext);
 
@@ -1303,7 +1303,7 @@ char* search_info(char* loginer,int type)
 	char dData[4100]= {0};
 	int mid,Datalen;
 	char tmp[4608]= {0};
-	unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
+	//unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 	DBINT result;
 	uint len=0,tlen;
 	int ret=0;
