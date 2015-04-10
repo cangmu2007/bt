@@ -402,7 +402,7 @@ CRM Business_deal(CM cm,int fd)
             break;
         case BUS_LOGINER_MSG:
             if(NULL==(text=Check_Logined(cm->sender)))
-                text=GetOrger_Msg(cm->context);
+                text=GetOrger_Msg(cm->sender,cm->context);
 			if(0==strcmp(text,"FAULT"))
                 flag=1;
             else
@@ -472,13 +472,13 @@ CRM Business_deal(CM cm,int fd)
             break;
 		case BUS_CHE_PHOTO:
 			if(NULL==(text=Check_Logined(cm->sender)))
-                text=Check_Photo(cm->sender,cm->context);
+                text=Check_Photo(cm->context);
 			break;
-		case BUS_CIMS_ID:
+		/*case BUS_CIMS_ID:
 			if(NULL==(text=Check_Logined(cm->sender)))
                 text=Get_CIMS_ID(cm->sender);
 			flag=1;
-			break;
+			break;*/
     }
     if(NULL!=text)
     {

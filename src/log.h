@@ -1,3 +1,6 @@
+#ifndef __LOG_H__
+#define __LOG_H__
+
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -18,3 +21,5 @@ int writelog(char* msg);
 void closelog();
 
 char* gettime();
+
+#endif

@@ -1,5 +1,5 @@
-#ifndef __HEAD_H__
-#define __HEAD_H__
+#ifndef __SYBDB_H__
+#define __SYBDB_H__
 
 #include <stdio.h>
 #include <sybfront.h> //freetds头文件 

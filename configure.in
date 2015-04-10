@@ -23,7 +23,7 @@ AC_CHECK_LIB([pthread],[sybdb],[z])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h pthread.h errno.h sys/un.h fcntl.h semaphore.h sybfront.h sybdb.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h pthread.h errno.h sys/un.h fcntl.h semaphore.h])
 AC_PROG_LIBTOOL
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -37,8 +37,7 @@ AC_FUNC_REALLOC
 AC_CHECK_FUNCS([memset socket strchr strerror strstr])
 
 AC_CONFIG_FILES([CONFIG/Makefile
-                 DES/Makefile            
-		 COMPRESS/Makefile
+                 DES/Makefile
 		 src/Makefile
 		 Makefile])
 AC_OUTPUT

@@ -171,7 +171,10 @@ int delete_point_log(UL head,UL uid) //用户在线链表删除节点
     if(q->next==NULL)
     {
         p->next=NULL;
-        printf("user %s outline!\n",q->id);
+	char msg[64]={0};
+        sprintf(msg,"user %s outline!",q->id);
+	printf("%s\n",msg);
+	writelog(msg);
         if(q->il!=NULL)
         {
             DeleteList(q->il);
@@ -184,7 +187,10 @@ int delete_point_log(UL head,UL uid) //用户在线链表删除节点
     else
     {
         p->next=q->next;
-        printf("user %s outline!\n",q->id);
+	char msg[64]={0};
+        sprintf(msg,"user %s outline!",q->id);
+	printf("%s\n",msg);
+	writelog(msg);
         if(q->il!=NULL)
         {
             DeleteList(q->il);
@@ -200,9 +206,9 @@ _re:
     return ret;
 }
 
-int insert_point(UL head,char* loginer,int fd)  //用户在线链表增加节点
+UL insert_point(UL head,char* loginer,int fd)  //用户在线链表增加节点
 {
-    UL s,q=head;
+    UL s=NULL,q=head;
 	int ret=0;
 	pthread_mutex_lock(&mutex_ul);
     while(q->next)
@@ -220,7 +226,7 @@ int insert_point(UL head,char* loginer,int fd)  //用户在线链表增加节点
 		if(NULL==s)
 		{
 			pthread_mutex_unlock(&mutex_ul);
-			return -1;
+			return NULL;
 		}
 		memset(s,0,sizeof(User_Linking));
 		strcpy(s->id,loginer);
@@ -230,17 +236,20 @@ int insert_point(UL head,char* loginer,int fd)  //用户在线链表增加节点
 		if(NULL==il)
 		{
 			pthread_mutex_unlock(&mutex_ul);
-			return -1;
+			return NULL;
 		}
 		memset(il,0,sizeof(IMF_LIST));
 		il->next=NULL;
 		s->il=il;
 		s->flag=0;
 		q->next=s;
-		printf("user %s online!\n",s->id);
+		char msg[64]={0};
+        sprintf(msg,"user %s online!",s->id);
+		printf("%s\n",msg);
+		writelog(msg);
 	}
 	pthread_mutex_unlock(&mutex_ul);
-    return ret;
+    return s;
 }
 
 int get_len(UL head)    //获取用户在线链表节点数量
@@ -278,7 +287,7 @@ void flush_list(UL head)
     memset(list,0,60);
     strcpy(list,MO_XML_HEAD);
     strcat(list,"<online type=\"2\">");
-    char temp[48]= {0};
+    char temp[64]= {0};
     UL p=head->next;
     uint tlen,len=strlen(list);
 	char* tmp=NULL;
@@ -295,7 +304,7 @@ void flush_list(UL head)
         memset(list+len,0,tlen+1);
         strcpy(list+len,temp);
         len=len+tlen;
-        memset(temp,0,48);
+        memset(temp,0,64);
         p=p->next;
     }
     tmp=(char*)realloc(list,len+10);

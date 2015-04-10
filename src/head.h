@@ -15,6 +15,9 @@
 #include <signal.h>
 #include "freetdstodb.h"
 #include "log.h"
+#include "curl_ctl.h"
+#include "encode_and_decode.h"
+#include "json_analysis.h"
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -26,27 +29,10 @@
 #include <poll.h>
 #endif
 
-//#define DBSERVER "192.168.1.128:2816"   //数据库服务器连接地址
-//#define SQL_DBNAME "OAInstantTalk"  //数据库名
-
-/***************************************************************************************/
-
-//数据库登录
-//#define SQL_USER "sa"   //用户名
-//#define SQL_PASSWD "123456" //密码
-
-//CGI通信
-//#define MAX_CGI_LINK 350    //CGI最大连接数
-//#define UNIX_PATH "/cygdrive/c/Apache2.2/cgi-bin/cgi_link"    //域套接字连接符路径(windows用户必须设置在/dev/fs/下且有读写权限的目录内，套接口的名称必须符合文件名命名规则且不能有后缀，该宏和CGI头文件中的同名宏必须相同)
-
-//中间件通信
-//#define MI_PORT 4220    //中间件端口
-//#define MI_ADDR "192.168.1.128" //中间件IP
 #define DATA_BUF_LEN 1024*4 //中间件收发缓冲区
 
 //XML头
 #define MO_XML_HEAD "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-//#define CONPANY_ID 1    //公司ID
 
 /***************************************业务号码************************************/
 #define BUS_SERVER_PUSH 0   //建立服务器推送连接
@@ -73,7 +59,7 @@
 #define BUS_UPDATE_LOGINER_MSG 18   //修改个人资料
 #define BUS_CON_PIC 19  //获取会话内容中的图片
 #define BUS_CHE_PHOTO 20	//验证用户头像
-#define BUS_CIMS_ID 21	//验证用户头像
+//#define BUS_CIMS_ID 21	//获取CIMS的用户ID
 /***********************************************************************************/
 
 enum DEV_TYPE
@@ -227,7 +213,7 @@ typedef struct  //传输包包头
 typedef struct
 {
     BsnsPacket bp;
-    char id[32];
+    char id[48];
     char context[0];
 } MS32CHARINFO,*MS32_CHARINFO;
 
@@ -239,15 +225,15 @@ typedef struct
 {
     BsnsPacket bp;
 	//uint32_t sys_type;
-    char srcid[32];
-    char desid[32];
+    char srcid[48];
+    char desid[48];
     char context[0];
 } MS64CHARINFO,*MS64_CHARINFO;
 
 typedef struct
 {
-    char srcid[32];
-    char desid[32];
+    char srcid[48];
+    char desid[48];
     char context[0];
 } RMS64CHARINFO,*RMS64_CHARINFO;
 
@@ -272,7 +258,7 @@ typedef struct
 typedef struct
 {
     BsnsPacket bp;
-    char uid[32];
+    char uid[48];
     uint32_t gid;
     uint32_t opertype;
     char context[0];
@@ -280,7 +266,7 @@ typedef struct
 
 typedef struct
 {
-    char uid[32];
+    char uid[48];
     uint32_t gid;
     uint32_t opertype;
     char context[0];
@@ -293,14 +279,14 @@ typedef struct
 {
     BsnsPacket bp;
 	//uint32_t sys_type;
-    char uid[32];
+    char uid[48];
     uint32_t gid;
     char context[0];
 } MSGROUP,*MS_GROUP;
 
 typedef struct
 {
-    char uid[32];
+    char uid[48];
     uint32_t gid;
     char context[0];
 } RMSGROUP,*RMS_GROUP;
@@ -326,8 +312,8 @@ typedef struct  //CGI发来的消息
 {
     uint32_t packet_len;    //包长
     uint32_t type;  //业务号
-    char sender[32];    //用户id
-    char recver[32];    //目标id，用于对话
+    char sender[48];    //用户id
+    char recver[48];    //目标id，用于对话
 	uint32_t dev_type;	//设备系统类型
     uint32_t len;   //context的长度
     char context[0];    //业务信息
@@ -349,7 +335,7 @@ typedef struct  //回应给CGI的信息
 struct _DPMNODE	// 部门节点信息
 {
 	int DpmId;
-	char DpmName[128];
+	char DpmName[192];
 };
 
 /***************************************************************************************/
@@ -363,11 +349,15 @@ typedef struct imf_list	//通知队列节点
 
 typedef struct user_link    //用户在线结构体，用于组成链表
 {
-    char id[32];    //用户id
+    char id[48];    //用户id
+	char access_token[36];	//访问令牌
+	char refresh_token[36];	//更新令牌
+	UserInfo usrinfo;	//用户信息
+	//char Nick_name[48];	//昵称
     int fd; //CGI域套接字文件描述符
     //pthread_t time; //计时线程(8byte)
-    int flag;
-    IL il;
+    int flag;	//使用中标识
+    IL il;	//通知消息队列的头指针
     struct user_link *next;
 } User_Linking,*UL;
 
@@ -382,7 +372,7 @@ sem_t mi_send_recv_ctrl;    //中间件启动连接控制
 pthread_t rad_thread;	//中间件接收线程
 
 char* org_stu;  //组织结构
-char* tmp_stu;  //临时组织结构缓存区
+//char* tmp_stu;  //临时组织结构缓存区
 
 int g_nOrgStuLen;	//组织结构缓冲区长度
 
@@ -409,10 +399,21 @@ char* LOG_PATH;	//日志路径
 int MI_PORT;    //中间件端口
 char* MI_ADDR; //中间件IP
 
-int CONPANY_ID;    //公司ID
+//int CONPANY_ID;    //公司ID
+
+//用户中心通信
+char* CLIENT_ID;
+char* CLIENT_PASSWORD;
+char* CLIENT_KEY;
+char* USER_ADDR;
+char* LISTEN_MSG_URL;
+
+char clientkey[80];	//保存解码后的CLIENT_KEY
+uint keylen;	//解码后的CLIENT_KEY长度
+char author[64];	//存储OAuth验证码
 
 //加密密钥
-static const unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
+static unsigned char deskey[24] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+' };
 
 /***************************************************************************************/
 /*************************************************main.c**********************************/
@@ -460,7 +461,7 @@ char* GetGrouper(char* gid);    //获取群成员列表
 char* SetShield(char* loginer,char* context);   //设置群消息屏蔽
 char* GetGroup(char* loginer);  //获取群列表
 char* GetAvatar(char* loginer); //获取头像
-char* GetOrger_Msg(char* orger);    //获取个人资料
+char* GetOrger_Msg(char* loginer,char* orger);    //获取个人资料
 char* GetMultiplayer(char* mid);    //获取讨论组成员列表
 char* GetMulti(char* loginer);  //获取讨论组列表
 char* NewGroup(char* loginer,char* context);    //新建群
@@ -474,16 +475,16 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t len,uint32_t syst
 char* GetImf(UL ul,char* loginer); //获取通知队列
 //void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl); //字符串替换
 //int Count(char *const a,char *const b); //子字符串统计
-char* Check_Photo(char* uid,char* md5);	//验证头像
-char* Get_CIMS_ID(char* uid);	//获取CIMS的ID
+char* Check_Photo(char* context);	//验证头像
+//char* Get_CIMS_ID(char* uid);	//获取CIMS的ID
 
 /***************************************************************************************/
 
 /****************************************mi_business.c************************************/
 
 void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen);  //获取PC端在线列表
-int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type);   //获取PC端消息
-void MSG_INFO(unsigned char Result,int type);   //获取PC端通知
+int MSG_RECV(char* srcdata,int srclen,int type);   //获取PC端消息
+void MSG_INFO(int type);   //获取PC端通知
 //char Char2Int(char ch); //字符转整型
 //char Str2Bin(char *str);    //字符转二进制
 //unsigned char* UrlDecode(char* str);    //URL解码
@@ -518,17 +519,18 @@ char* get_picture(int pid,char* ext);   //获取对话图片
 int get_group_mutil_user(char* uid,int gid,int type);   //获取群/多人会话成员并发送通知
 int check_user_photo(char* uid,char* md5);	//验证数据库中photo的MD5字段
 //获取组织结构
-int GetOnlineCtms(int dpmid);
-int GetSubDpmsAndWorkersForCvst(int dmpid);
-char* getCIMS_id(char *uid);	//查询CIMS的ID
-
+//int GetOnlineCtms(int dpmid);
+//int GetSubDpmsAndWorkersForCvst(int dmpid);
+//char* getCIMS_id(char *uid);	//查询CIMS的ID
+int get_sign(char* uid,char* sign);	//获取用户签名
+int update_user_mood(char* uid,char* Mood);	//更新用户签名
 /********************************************************************************************************************/
 
 /********************************************userlink.c*********************/
 
 UL get_point(UL head,char* loginer);    //获取在线用户节点
 int get_len(UL head);   //获取在线用户个数
-int insert_point(UL head,char* loginer,int fd); //添加在线用户节点（登录）
+UL insert_point(UL head,char* loginer,int fd); //添加在线用户节点（登录）
 int delete_point_log(UL head,UL uid);    //删除在线用户节点
 int update_point_fd(UL head,char* loginer,int fd);  //刷新在线用户连接文件描述符
 //int update_point_pth(UL head,int fd,pthread_t time);    //修改用户在线链表节点的线程描述符
@@ -542,3 +544,14 @@ void flush_list(UL head);   //获取当前在线用户列表
 void DeleteULList(UL head); //清空用户在线列表
 
 /***************************************************************************************/
+
+/***********************************************webctrl.c**********************************************/
+int setAuth(char* client_id,char* client_pass);	//创建OAuth
+int web_check_up(char *uid,char *pass,Token retn);	//用户中心登录验证
+char* web_get_schema(UL ul,int flag);	//获取组织结构
+char* web_get_info(UL ul,char* desid,int flag);	//获取用户信息
+int web_check_avatar(char* pid,char* md5val);	//验证头像文件MD5
+int web_updata_info(UL ul,char* Mood,char* Other);	//更新用户信息
+void fresh_schema();	//更新组织结构
+void* listen_schema();	//组织结构更新通知接收线程
+/******************************************************************************************************/

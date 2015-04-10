@@ -10,6 +10,39 @@ char* Check_Logined(char* loginer)
 
 char* Login(char* loginer,char* password)
 {
+	if(NULL!=get_point(user,loginer))
+	{
+        return loginer;
+	}
+	ReToken retn={0};
+	int ret=web_check_up(loginer,password,&retn);
+	if(ret==0)
+		return "login_error";
+	else if(ret==-1)
+		return "FAULT";
+	UL ul=insert_point(user,loginer,-1);
+	if(NULL==ul)
+	{
+        return "FAULT";
+	}
+	strcpy(ul->access_token,retn.access_token);
+	strcpy(ul->refresh_token,retn.refresh_token);
+	MS32CHARINFO ms32={0};
+    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGIN, REQUEST, NONE,48);
+    strcpy(ms32.id,loginer);
+    if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
+    {
+        delete_point_log(user,ul);
+		return "FAULT";
+	}
+    flush_list(user);
+	//不再立刻通知客户端10-10
+    //cgi_all_send("41",loginer);
+    return loginer;
+}
+
+/*char* Login(char* loginer,char* password)
+{
     if(NULL!=get_point(user,loginer))
         return loginer;
 	int ret=check_up(loginer,password);
@@ -33,7 +66,7 @@ char* Login(char* loginer,char* password)
 	//不再立刻通知客户端10-10
     //cgi_all_send("41",loginer);
     return loginer;
-}
+}*/
 
 char* Cancellation(char* loginer)
 {
@@ -45,7 +78,7 @@ char* Cancellation(char* loginer)
         return "FAULT";
     Zero_RE(fd,"CANCEL",6,0);
     MS32CHARINFO ms32={0};
-    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGOUT, REQUEST, NONE,32);
+    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGOUT, REQUEST, NONE,48);
     strcpy(ms32.id,loginer);
     MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1);
     flush_list(user);
@@ -55,6 +88,19 @@ char* Cancellation(char* loginer)
 }
 
 char* GetOrg_Stu()
+{
+	if(NULL==org_stu)
+	{
+		fresh_schema();
+		if(NULL==org_stu)
+		{
+			return "FAULT";
+		}
+	}
+	return xml_compress(org_stu,0);
+}
+
+/*char* GetOrg_Stu()
 {
     //if(get_org_stu(CONPANY_ID)<0)   //获取组织结构
 	if(GetOnlineCtms(CONPANY_ID)<0)
@@ -71,7 +117,7 @@ char* GetOrg_Stu()
     }
 	return xml_compress(org_stu,0);
     //return org_stu;
-}
+}*/
 
 char* GetPc_Ol()
 {
@@ -183,7 +229,7 @@ char* SetShield(char* loginer,char* context)
     strcpy(mgc.uid,loginer);
     mgc.gid=gid;
     mgc.opertype=type;
-    mgc.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_NOTIFY, REQUEST, NONE,sizeof(MSGROUP));
+    mgc.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_NOTIFY, REQUEST, NONE,48+sizeof(uint32_t));
     if(MI_Write((char*)&mgc,sizeof(MSGROUPCTRL),1)<0)
         return "FAULT";
     return "OK";
@@ -208,14 +254,28 @@ char* GetAvatar(char* orger)
     //return get_photo(orger);
 }
 
-char* GetOrger_Msg(char* orger)
+char* GetOrger_Msg(char* loginer,char* orger)
+{
+	UL ul=get_point(user,loginer);
+	if(NULL==ul)
+	{
+		return "FAULT";
+	}
+	char* result=web_get_info(ul,orger,0);
+	if(NULL==result)
+		return "FAULT";
+	else
+		return xml_compress(result,1);
+}
+
+/*char* GetOrger_Msg(char* orger)
 {
     char* result=get_info(orger);
 	if(NULL==result)
 		return "FAULT";
 	else
 		return xml_compress(result,1);
-}
+}*/
 
 char* GetMultiplayer(char* mid)
 {
@@ -239,12 +299,12 @@ char* NewGroup(char* loginer,char* context)
 {
     //context分割
     //unsigned char* data=UrlDecode(context);
-    char name[32]= {0},theme[128]= {0},id[512]= {0};
+    char name[48]= {0},theme[128]= {0},id[512]= {0};
     if(sscanf(context,"%*[^=]=%[^;]%*[^=]=%[^;]%*[^=]=%s",name,theme,id)!=3)
         return "FAULT";
     //free(data);
     MSGROUP mr= {0};
-    mr.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_CREATE, REQUEST, NONE,sizeof(MSGROUP));
+    mr.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_CREATE, REQUEST, NONE,48+sizeof(uint32_t));
 	strcpy(mr.uid,loginer);
     if(insert_group(loginer,name,theme,id,&mr.gid,CTRLGROUP)==-1) //数据库操作
 	{
@@ -254,7 +314,7 @@ char* NewGroup(char* loginer,char* context)
 	{
         return "FAULT";
 	}
-    char tmp[32]= {0};
+    char tmp[48]= {0};
     uint len=0;
     while(sscanf(id+len,"%[^|]",tmp)==1)
     {
@@ -276,7 +336,7 @@ char* NewGroup(char* loginer,char* context)
                     insert_imf(usr->il,con,strlen(con));
             }
         len+=strlen(tmp)+1;
-        memset(tmp,0,32);
+        memset(tmp,0,48);
     }
     return GetGroup(loginer);
 }
@@ -290,7 +350,7 @@ char* NewMulti(char* loginer,char* context)
         return "FAULT";
     //free(data);
     MSGROUP mr= {0};
-    mr.bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_CREATE, REQUEST, NONE,sizeof(MSGROUP));
+    mr.bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_CREATE, REQUEST, NONE,48+sizeof(uint32_t));
 	strcpy(mr.uid,loginer);
     if(insert_group(loginer,NULL,theme,id,&mr.gid,CTRLMUTIL)==-1)  //数据库操作
 	{
@@ -302,7 +362,7 @@ char* NewMulti(char* loginer,char* context)
         return "FAULT";
 	}
 
-    char tmp[32]= {0};
+    char tmp[48]= {0};
     uint len=0;
     while(sscanf(id+len,"%[^|]",tmp)==1)
     {
@@ -324,7 +384,7 @@ char* NewMulti(char* loginer,char* context)
                     insert_imf(usr->il,con,strlen(con));
             }
         len+=strlen(tmp)+1;
-        memset(tmp,0,32);
+        memset(tmp,0,48);
     }
     return GetMulti(loginer);
 }
@@ -360,7 +420,7 @@ char* ExitGroup(char* loginer,char* gid)
     MSGROUP mg= {0};
     strcpy(mg.uid,loginer);
     mg.gid=atoi(gid);
-    mg.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_DELUSER, REQUEST, NONE,sizeof(MSGROUP));
+    mg.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_DELUSER, REQUEST, NONE,48+sizeof(uint32_t));
     if(MI_Write((char*)&mg,sizeof(MSGROUP),1)<0)
         return "FAULT";
     return  GetGroup(loginer);
@@ -374,7 +434,7 @@ char* ExitMulti(char* loginer,char* mid)
     MSGROUP mg= {0};
     strcpy(mg.uid,loginer);
     mg.gid=atoi(mid);
-    mg.bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_DELUSER, REQUEST, NONE,sizeof(MSGROUP));
+    mg.bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_DELUSER, REQUEST, NONE,48+sizeof(uint32_t));
     if(MI_Write((char*)&mg,sizeof(MSGROUP),1)<0)
         return "FAULT";
     return GetMulti(loginer);
@@ -417,9 +477,9 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t sys
             strcpy(ms64->srcid,src);
             strcpy(ms64->desid,des);
             memcpy(ms64->context,context,llen);
-            ms64->bp=BsnsPacket_init(MC_BTANDRIOD_PTOP_MSG, REQUEST, NONE,64+llen);
+            ms64->bp=BsnsPacket_init(MC_BTANDRIOD_PTOP_MSG, REQUEST, NONE,48+48+llen);
             ret=MI_Write((char*)ms64,sizeof(MS64CHARINFO)+llen,1);
-            num=MSG_RECV(RESPONSE,(char*)ms64->srcid,64,type);
+            num=MSG_RECV((char*)ms64->srcid,48+48,type);
             free(ms64);
         }
         else    //群/多人会话
@@ -434,9 +494,9 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t sys
             strcpy(mg->uid,src);
             mg->gid=atoi(des);
             memcpy(mg->context,context,llen);
-            mg->bp=BsnsPacket_init((type==2)?MC_BTANDRIOD_GROUP_MSG:MC_BTANDRIOD_MULTI_MSG, REQUEST, NONE,32+sizeof(uint32_t)+llen);
+            mg->bp=BsnsPacket_init((type==2)?MC_BTANDRIOD_GROUP_MSG:MC_BTANDRIOD_MULTI_MSG, REQUEST, NONE,48+sizeof(uint32_t)+llen);
             ret=MI_Write((char*)mg,sizeof(MSGROUP)+llen,1);
-            num=MSG_RECV(RESPONSE,(char*)mg->uid,32+sizeof(uint32_t),type);
+            num=MSG_RECV((char*)mg->uid,48+sizeof(uint32_t),type);
             free(mg);
         }
     }
@@ -452,11 +512,88 @@ char* UpdateLoginerMsg(char* loginer,char* context)
     char Phone[48]= {0};
     char Mail[48]= {0};
     char Mood[384]= {0};
+	char Uname[48]={0};
     //char* data=UrlDecode(context);
     //sscanf(data,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
     //free(data);
 	sscanf(context,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
-    if(update_org_info(loginer,Phone,Mobile,Mail,Mood)==-1)
+    
+	UL ul=get_point(user,loginer);
+	if(NULL==ul)
+		return "FAULT";
+
+	char Other[1024]={0};
+	char tmp[512]={0};
+	sprintf(tmp,"nick_name=%s&sex=%d&email_address=%s&phone_number=%s&cell_phone_number=%s", \
+		ul->usrinfo.Nickname,ul->usrinfo.sex,Mail,Phone,Mobile);
+	strcat(Other,tmp);
+	if(NULL!=ul->usrinfo.real_name)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&real_name=%s",ul->usrinfo.real_name);
+		strcat(Other,tmp);
+	}
+	if(NULL!=ul->usrinfo.personal_web_uri)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&personal_web_uri=%s",ul->usrinfo.personal_web_uri);
+		strcat(Other,tmp);
+	}
+	if(NULL!=ul->usrinfo.birthday)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&birthday=%s",ul->usrinfo.birthday);
+		strcat(Other,tmp);
+	}
+	if(NULL!=ul->usrinfo.qq_number)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&qq_number=%s",ul->usrinfo.qq_number);
+		strcat(Other,tmp);
+	}
+	if(NULL!=ul->usrinfo.main_post)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&main_post=%s",ul->usrinfo.main_post);
+		strcat(Other,tmp);
+	}
+	if(NULL!=ul->usrinfo.posts)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&posts=%s",ul->usrinfo.posts);
+		strcat(Other,tmp);
+	}
+	if(NULL!=ul->usrinfo.Photo)
+	{
+		memset(tmp,0,512);
+		sprintf(tmp,"&photo=%s",ul->usrinfo.Photo);
+		strcat(Other,tmp);
+	}
+	if(web_updata_info(ul,Mood,Other)<0)
+		return "FAULT";
+    MS32CHARINFO ms32= {0};
+	strcpy(ms32.id,loginer);
+    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_BASEINFO, REQUEST, NONE,48);
+    if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
+        return "FAULT";
+	ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_MOOD, REQUEST, NONE,48);
+	if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
+        return "FAULT";
+    return "OK";
+}
+
+/*char* UpdateLoginerMsg(char* loginer,char* context)
+{
+    //修改数据库
+    char Mobile[48]= {0};
+    char Phone[48]= {0};
+    char Mail[48]= {0};
+    char Mood[384]= {0};
+    //char* data=UrlDecode(context);
+    //sscanf(data,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
+    //free(data);
+	sscanf(context,"%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]%*[^=]=%[^|]",Phone,Mobile,Mail,Mood);
+    if(update_org_info(loginer,Phone,Mobile,Mail,Mood)<0)
 		return "FAULT";
     MS32CHARINFO ms32= {0};
 	strcpy(ms32.id,loginer);
@@ -467,25 +604,39 @@ char* UpdateLoginerMsg(char* loginer,char* context)
 	if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
         return "FAULT";
     return "OK";
+}*/
+
+char* Check_Photo(char* context)
+{
+	//val样例pid=xxxxxxxx|md5=yyyyyyyyyy
+	char pid[36]={0};
+	char md5v[36]={0};
+	if(sscanf(context,"%*[^=]=%[^|]%*[^=]=%s",pid,md5v)!=2)
+		return "FAULT";
+	int ret=web_check_avatar(pid,md5v);
+	if(ret==1)
+		return "OK";
+	else
+		return "FAULT";
 }
 
-char* Check_Photo(char* uid,char* md5)
+/*char* Check_Photo(char* uid,char* val)
 {
 	int ret=check_user_photo(uid,md5);
 	if(ret==0)
 		return "OK";
 	else
 		return "FAULT";
-}
+}*/
 
-char* Get_CIMS_ID(char* uid)
+/*char* Get_CIMS_ID(char* uid)
 {
 	char* ret=getCIMS_id(uid);
 	if(ret!=NULL)
 		return ret;
 	else
 		return "FAULT";
-}
+}*/
 
 /*void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl)
 {

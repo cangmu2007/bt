@@ -19,9 +19,9 @@ int Init_Mi_TCP(char* ip,int port)
 	int keepIdle = 1000;
 	int keepInterval = 30;
 	int keepCount = 10;
-	setsockopt(mi_fd,IPPROTO_TCP, 4,(void *)&keepIdle,sizeof(keepIdle));
-	setsockopt(mi_fd,IPPROTO_TCP,5,(void *)&keepInterval,sizeof(keepInterval));
-	setsockopt(mi_fd,IPPROTO_TCP, 6,(void *)&keepCount,sizeof(keepCount));
+	setsockopt(mi_fd,IPPROTO_TCP, 4,(void*)&keepIdle,sizeof(keepIdle));
+	setsockopt(mi_fd,IPPROTO_TCP,5,(void*)&keepInterval,sizeof(keepInterval));
+	setsockopt(mi_fd,IPPROTO_TCP, 6,(void*)&keepCount,sizeof(keepCount));
 
 	struct sockaddr_in MI_addr;
     memset(&MI_addr, 0,sizeof(MI_addr));    //TCPÁ¬½ÓµØÖ·
@@ -383,7 +383,7 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
 			}
             break;
         case MC_BTPC_CTM_BASEINFO:
-            MSG_INFO(pBsns->Result,CTRLPERSON);
+            MSG_INFO(CTRLPERSON);
             break;
         case MC_BTPC_CTM_MOOD:
             break;
@@ -397,7 +397,7 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
 			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
-            MSG_RECV(pBsns->Result, srcdata, srclen,CTRLPERSON);
+            MSG_RECV(srcdata, srclen,CTRLPERSON);
             free(srcdata);
             break;
         case MC_BTPC_GROUP_MSG:
@@ -408,7 +408,7 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
 			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
-            MSG_RECV(pBsns->Result, srcdata, srclen,CTRLGROUP);
+            MSG_RECV(srcdata, srclen,CTRLGROUP);
             free(srcdata);
             break;
         case MC_BTPC_MULTI_MSG:
@@ -419,23 +419,23 @@ void HandleBusiness(BsPt pBsns, const char *data, uint len)
 			}
 			memset(srcdata,0,srclen+1);
             memcpy(srcdata,data,srclen);
-            MSG_RECV(pBsns->Result, srcdata, srclen,CTRLMUTIL);
+            MSG_RECV(srcdata, srclen,CTRLMUTIL);
             free(srcdata);
             break;
         case MC_BTPC_GROUP_CREATE:
-            MSG_INFO(pBsns->Result,CTRLGROUP);
+            MSG_INFO(CTRLGROUP);
             break;
 		case MC_BTPC_MULTI_CREATE:
-			MSG_INFO(pBsns->Result,CTRLMUTIL);
+			MSG_INFO(CTRLMUTIL);
             break;
         case MC_BTPC_GROUP_DELETE:
-            MSG_INFO(pBsns->Result,CTRLGROUP);
+            MSG_INFO(CTRLGROUP);
             break;
         case MC_BTPC_MULTI_DELUSER:
-            MSG_INFO(pBsns->Result,CTRLMUTIL);
+            MSG_INFO(CTRLMUTIL);
             break;
 		case MC_BTPC_MULTI_SUBJECT:
-            MSG_INFO(pBsns->Result,CTRLMUTIL);
+            MSG_INFO(CTRLMUTIL);
             break;
         default:
             break;

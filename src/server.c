@@ -7,6 +7,8 @@ static int epfd=-1;
 
 static struct config *cfg;
 static pthread_t timer;	//CGI在线更新线程
+static pthread_t listenurl;	//用户中心监听通知线程
+static pthread_t check_mi;	//用于定时检查中间件连接正常的线程
 
 int main(int argc, char *argv[])
 {
@@ -15,7 +17,6 @@ int main(int argc, char *argv[])
 	int i=0;
     int new_fd=-1;
 	int num = 1;   
-	pthread_t check_mi;	//用于定时检查中间件连接正常的线程
     struct sockaddr_un cgi_addr;
 
 	/********************************************************************************************/
@@ -35,7 +36,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	/*if(!(cfg = cfg_load_file("/home/mu/bt/beetalk.conf")))
+	/*if(!(cfg = cfg_load_file("/home/mu/testserver/etc/beetalk.conf")))
 	{
 		printf("Reads the configuration file error!\n");
 		exit(-1);
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
 	SQL_USER=cfg_getstr(cfg,"DB_LOGIN.SQL_USER");   //用户名
 	SQL_PASSWD=cfg_getstr(cfg,"DB_LOGIN.SQL_PASSWD"); //密码
 	SQL_LINK_COUNT=cfg_getnum(cfg,"DB_LOGIN.SQL_LINK_COUNT");	//数据库连接池
-	CONPANY_ID=cfg_getnum(cfg,"DB_LOGIN.CONPANY_ID");    //公司ID
+	//CONPANY_ID=cfg_getnum(cfg,"DB_LOGIN.CONPANY_ID");    //公司ID
 
 	MI_ADDR=cfg_getstr(cfg,"MI_CONTECT.MI_ADDR"); //中间件IP
 	MI_PORT=cfg_getnum(cfg,"MI_CONTECT.MI_PORT");    //中间件端口
@@ -57,6 +58,12 @@ int main(int argc, char *argv[])
 	UNIX_PATH=cfg_getstr(cfg,"CGI_SET.UNIX_PATH");    //域套接字连接符路径(用户必须设置有读写权限的目录内，套接口的名称必须符合文件名命名规则且不能有后缀，该变量和CGI头文件中的同名宏必须相同)
 	LOG_PATH=cfg_getstr(cfg,"CGI_SET.LOG_PATH");	//日志路径
 
+	CLIENT_ID=cfg_getstr(cfg,"USER_SET.CLIENT_ID");
+	CLIENT_PASSWORD=cfg_getstr(cfg,"USER_SET.CLIENT_PASSWORD");
+	CLIENT_KEY=cfg_getstr(cfg,"USER_SET.CLIENT_KEY");
+	USER_ADDR=cfg_getstr(cfg,"USER_SET.USER_ADDR");
+	LISTEN_MSG_URL=cfg_getstr(cfg,"USER_SET.LISTEN_MSG_URL");
+	
 	if(signal(SIGTERM, exitbt)<0)	//注册关闭信号
 	{
 		perror("error signal 15");
@@ -96,9 +103,26 @@ int main(int argc, char *argv[])
 	memset(user,0,sizeof(User_Linking));
     user->next=NULL;
     org_stu=NULL;   //初始化组织结构
-    tmp_stu=NULL;
+    //tmp_stu=NULL;
     PC_OL=NULL_OL();
     MO_OL=NULL_OL();
+
+	if(curl_init(NULL)<0)	//初始化用户中心相关模块
+	{
+		printf("curl_init error\n");
+		exit(-1);
+	}
+	keylen=base64_decode(CLIENT_KEY, clientkey);
+	if(setAuth(CLIENT_ID,CLIENT_PASSWORD)<0)
+	{
+		printf("setAuth error\n");
+		exit(-1);
+	}
+	if(pthread_create(&listenurl,NULL,(void*)listen_schema,NULL)<0)
+	{
+		printf("pthread_create listenurl error\n");
+		exit(-1);
+	}
 
 	if(InitData(DBSERVER,SQL_USER,SQL_PASSWD,SQL_DBNAME)<0)	//初始化数据库连接
 	{
@@ -428,16 +452,23 @@ int main(int argc, char *argv[])
 
 void exitbt(int signo)
 {
+	if(pthread_cancel(check_mi)<0)
+	{
+		printf("pthread_cancle check_mi error\n");
+		writelog("pthread_cancle check_mi");
+        exit(-1);
+	}
+
 	Exit_Mi_TCP();	//关闭中间件连接
 
 	if(pthread_cancel(timer)<0)
 	{
-		printf("pthread_cancle timer\n");
+		printf("pthread_cancle timer error\n");
 		writelog("pthread_cancle timer");
         exit(-1);
 	}
 	
-	if(org_stu != NULL && 0 != strcmp(org_stu, MO_XML_HEAD))	//清理组织结构
+	if(org_stu != NULL)	//清理组织结构
 	{
 		free(org_stu);
 		org_stu=NULL;
@@ -453,6 +484,14 @@ void exitbt(int signo)
 	free(MO_OL);
 	free(PC_OL);
 
+	if(pthread_cancel(listenurl)<0)
+	{
+		printf("pthread_cancle listenurl error\n");
+		writelog("pthread_cancle listenurl");
+        exit(-1);
+	}
+	curl_release();	//关闭curl
+
 	if(pthread_mutex_destroy(&mutex_cgi)<0)  //销毁互斥锁
     {
         printf("pthread_mutex_destroy(cgi)");
@@ -463,5 +502,6 @@ void exitbt(int signo)
 	CloseConnection(dph);	//断开数据库
 	closelog();	//关闭日志
 	cfg_free(cfg);	//任务完成，释放
+	cfg=NULL;
 	exit(0);
 }

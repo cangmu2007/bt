@@ -52,11 +52,12 @@ PROGRAMS = $(bin_PROGRAMS)
 am_btserver_OBJECTS = cgi_business.$(OBJEXT) cgi_ctrl.$(OBJEXT) \
 	dbctrl.$(OBJEXT) freetdstodb.$(OBJEXT) mi_business.$(OBJEXT) \
 	net.$(OBJEXT) protocol.$(OBJEXT) userlink.$(OBJEXT) \
-	log.$(OBJEXT) server.$(OBJEXT)
+	log.$(OBJEXT) curl_ctl.$(OBJEXT) dpm_user.$(OBJEXT) \
+	encode_and_decode.$(OBJEXT) json_analysis.$(OBJEXT) \
+	webctrl.$(OBJEXT) compress.$(OBJEXT) server.$(OBJEXT)
 btserver_OBJECTS = $(am_btserver_OBJECTS)
 btserver_DEPENDENCIES = $(top_builddir)/CONFIG/libconfig.la \
-	$(top_builddir)/DES/libdes.la \
-	$(top_builddir)/COMPRESS/libgz.la
+	$(top_builddir)/DES/libdes.la
 am_delete_con_OBJECTS = delete_con.$(OBJEXT)
 delete_con_OBJECTS = $(am_delete_con_OBJECTS)
 delete_con_DEPENDENCIES = $(top_builddir)/CONFIG/libconfig.la
@@ -199,15 +200,21 @@ btserver_SOURCES = cgi_business.c \
 	       protocol.c \
 	       userlink.c \
 	       log.c \
+	       curl_ctl.c \
+	       dpm_user.c \
+	       encode_and_decode.c \
+	       json_analysis.c \
+	       webctrl.c \
+	       compress.c \
 	       server.c
 
 delete_con_SOURCES = delete_con.c
-btserver_LDADD = -lpthread -lsybdb $(top_builddir)/CONFIG/libconfig.la \
-	$(top_builddir)/DES/libdes.la \
-	$(top_builddir)/COMPRESS/libgz.la
+btserver_LDADD = -lpthread -lsybdb -lcurl -lssl -ljson-c \
+	$(top_builddir)/CONFIG/libconfig.la \
+	$(top_builddir)/DES/libdes.la
 delete_con_LDADD = -lsybdb $(top_builddir)/CONFIG/libconfig.la
-noinst_HEADERS = head.h freetdstodb.h
-INCLUDES = -I$(top_srcdir)include -I$(top_srcdir)/CONFIG -I$(top_srcdir)/DES -I$(top_srcdir)/COMPRESS
+noinst_HEADERS = head.h freetdstodb.h json_analysis.h HMACSHA1.h log.h encode_and_decode.h curl_ctl.h dpm_user.h sha1.h
+INCLUDES = -I$(top_srcdir)include -I$(top_srcdir)/CONFIG -I$(top_srcdir)/DES
 all: all-am
 
 .SUFFIXES:
@@ -300,15 +307,21 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cgi_business.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cgi_ctrl.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compress.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/curl_ctl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dbctrl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/delete_con.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dpm_user.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/encode_and_decode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/freetdstodb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/json_analysis.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mi_business.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protocol.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/userlink.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/webctrl.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

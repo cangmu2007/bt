@@ -63,12 +63,6 @@
 /* Define to 1 if you have the `strstr' function. */
 #undef HAVE_STRSTR
 
-/* Define to 1 if you have the <sybdb.h> header file. */
-#undef HAVE_SYBDB_H
-
-/* Define to 1 if you have the <sybfront.h> header file. */
-#undef HAVE_SYBFRONT_H
-
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 

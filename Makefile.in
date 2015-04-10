@@ -212,7 +212,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = CONFIG DES COMPRESS src
+SUBDIRS = CONFIG DES src
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -718,6 +718,7 @@ uninstall-am:
 #ctl_DATA=serverctl keep_alive time_delete
 
 install-exec-hook:
+	mkdir -p "$(prefix)/etc"
 	chmod -R a+w $(prefix)/etc
 	cp beetalk.conf $(prefix)/etc
 	cp serverctl keep_alive time_delete $(prefix)/bin

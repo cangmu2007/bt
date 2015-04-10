@@ -16,7 +16,7 @@ void OnMiddleSchema(unsigned char result)
     }
 }
 
-static int check_tcp=0;	//获取组织结构标识位
+static int check_tcp=0;	//获取PC在线列表标识位
 
 void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
 {
@@ -57,9 +57,9 @@ void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
 	*/
 }
 
-int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
+int MSG_RECV(char* srcdata,int srclen,int type)
 {
-    int ret=-1;
+    int ret=0;
     char* context=NULL;
     RMS64_CHARINFO ms64=NULL;
     RMS_GROUP mg=NULL;
@@ -71,28 +71,28 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
             ms64=(RMS64_CHARINFO)malloc(srclen);
 			if(NULL==ms64)
 			{
-				return ret;
+				return -1;
 			}
             memcpy(ms64,srcdata,srclen);
-            context=search_info(ms64->desid,CTRLPERSON);
-            ul=get_point(user,ms64->desid);
+			ul=get_point(user,ms64->desid);             
             if(NULL!=ul)
             {
+				context=search_info(ms64->desid,CTRLPERSON); 
                 if(ul->fd!=-1&&ul->flag==1)
                 {
                     ret=Zero_RE(ul->fd,context,(strlen(context)),1);
                     ul->flag=0;
                 }
-            }
-            if(context!=NULL&&strcmp("FALUT",context)!=0)
-                free(context);
+				if(context!=NULL&&strcmp("FALUT",context)!=0)
+					free(context);
+            }        
             free(ms64);
             break;
         case CTRLGROUP:
             mg=(RMS_GROUP)malloc(srclen);
 			if(NULL==mg)
 			{
-				return ret;
+				return -1;
 			}
             memcpy(mg,srcdata,srclen);
             //每个用户都发
@@ -103,7 +103,7 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
             mg=(RMS_GROUP)malloc(srclen);
 			if(NULL==mg)
 			{
-				return ret;
+				return -1;
 			}
             memcpy(mg,srcdata,srclen);
             //每个用户都发
@@ -114,7 +114,7 @@ int MSG_RECV(unsigned char Result,char* srcdata,int srclen,int type)
     return ret;
 }
 
-void MSG_INFO(unsigned char Result,int type)
+void MSG_INFO(int type)
 {
     uint len;
     char *context=NULL;
@@ -207,56 +207,3 @@ void* CHECK_MI_LINK(void* arg)
 		}
 	}
 }
-
-/*char Char2Int(char ch)
-{
-    if(ch>='0' && ch<='9')return (char)(ch-'0');
-    if(ch>='a' && ch<='f')return (char)(ch-'a'+10);
-    if(ch>='A' && ch<='F')return (char)(ch-'A'+10);
-    return -1;
-}
-
-char Str2Bin(char *str)
-{
-    char tempWord[2];
-    char chn;
-
-    tempWord[0] = Char2Int(str[0]);                                //make the B to 11 -- 00001011
-    tempWord[1] = Char2Int(str[1]);                                //make the 0 to 0  -- 00000000
-
-    chn = (tempWord[0] << 4) | tempWord[1];                //to change the BO to 10110000
-
-    return chn;
-}
-
-unsigned char* UrlDecode(char* str)
-{
-    char tmp[2];
-    int i=0,idx=0,ndx;
-    int len=strlen(str);
-    unsigned char* out=(unsigned char*)malloc(len+1);
-    memset(out,0,len+1);
-    unsigned char* output=out;
-
-    while(i<len)
-    {
-        if(str[i]=='%')
-        {
-            tmp[0]=str[i+1];
-            tmp[1]=str[i+2];
-            *(out++)=Str2Bin(tmp);
-            i=i+3;
-        }
-        else if(str[i]=='+')
-        {
-            *(out++)=' ';
-            i++;
-        }
-        else
-        {
-            *(out++)=str[i];
-            i++;
-        }
-    }
-    return output;
-}*/

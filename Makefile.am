@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS=foreign
 
-SUBDIRS=CONFIG DES COMPRESS src
+SUBDIRS=CONFIG DES src
 
 #confdir=${prefix}/etc
 #conf_DATA=beetalk.conf
@@ -9,6 +9,7 @@ SUBDIRS=CONFIG DES COMPRESS src
 #ctl_DATA=serverctl keep_alive time_delete
 
 install-exec-hook:
+	mkdir -p "$(prefix)/etc"
 	chmod -R a+w $(prefix)/etc
 	cp beetalk.conf $(prefix)/etc
 	cp serverctl keep_alive time_delete $(prefix)/bin

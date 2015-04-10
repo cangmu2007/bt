@@ -97,7 +97,10 @@ int8_t* xml_compress(int8_t* src,int flag)
 		return "FAULT";
 	}
 	if(flag)
+	{
 		free(src);
+		src=NULL;
+	}
 	
 	//实际长度
 	sprintf(buf,"%u",reallen);
