@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <openssl/md5.h>
+#include "md5.h"
 
 static const char* base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 

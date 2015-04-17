@@ -204,11 +204,22 @@ char* web_get_info(UL ul,char* desid,int flag)
 	{
 		if(200==ret)
 		{
-			if(analysis_userinfo(rd.data,&(ul->usrinfo))<0)
+			UI ui=NULL;
+			if(strcmp(ul->id,desid)==0)
+			{
+				ui=&(ul->usrinfo);
+			}
+			else
+			{
+				UserInfo uif={0};
+				ui=&uif;
+			}
+
+			if(analysis_userinfo(rd.data,ui)<0)
 			{
 				goto _err;
 			}
-			if(get_sign(desid,ul->usrinfo.Sign)<0)
+			if(get_sign(desid,ui->Sign)<0)
 			{
 				goto _err;
 			}
@@ -217,7 +228,7 @@ char* web_get_info(UL ul,char* desid,int flag)
 			strcat(results,MO_XML_HEAD);
 			sprintf(results+strlen(results), \
 				"<company><workphone>%s</workphone><mobilephone>%s</mobilephone><email>%s</email><photo>%s</photo><sign><![CDATA[%s]]></sign></company>", \
-				ul->usrinfo.Phone,ul->usrinfo.Mobile,ul->usrinfo.Mail,ul->usrinfo.Photo,ul->usrinfo.Sign);
+				ui->Phone,ui->Mobile,ui->Mail,ui->Photo,ui->Sign);
 		}
 		else if(400==ret&&0==flag)
 		{
@@ -319,6 +330,7 @@ void fresh_schema()
 	UL p=user->next;
 	if(p)
 	{
+		fresh_org=0;
 		char* stmp=web_get_schema(p,0);
 		if(NULL!=stmp)
 		{
@@ -330,6 +342,8 @@ void fresh_schema()
 			org_stu=stmp;
 		}
 	}
+	else
+		fresh_org=1;
 }
 
 void* listen_schema()

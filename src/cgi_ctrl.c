@@ -511,7 +511,6 @@ CRM Business_deal(CM cm,int fd)
 				memcpy(crm->context,text+10,datalen);
 				crm->len=datalen;
 			}
-			free(text);
         }
         if(flag==1&&0!=strcmp(text,"nologin")&&0!=strcmp(text,"FAULT")&&0!=strcmp(text,"OK"))
             free(text);

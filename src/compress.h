@@ -1,3 +1,6 @@
+#ifndef __COMPRESS_H__
+#define __COMPRESS_H__
+
 #include <stdlib.h>  
 #include <string.h>  
 #include <stdio.h>  
@@ -12,3 +15,5 @@ int decompress(const int8_t* src,uint srclen,int8_t* des,uint deslen);
 
 //xml字符串压缩,flag非0表示释放src空间
 int8_t* xml_compress(int8_t* src,int flag);
+
+#endif

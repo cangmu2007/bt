@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	/*if(!(cfg = cfg_load_file("/home/mu/testserver/etc/beetalk.conf")))
+	/*if(!(cfg = cfg_load_file("/usr/local/etc/beetalk.conf")))
 	{
 		printf("Reads the configuration file error!\n");
 		exit(-1);
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 
     /*************************************epoll方法定义，只能用于Linux**********************/
 #ifdef LINUX   
-    struct epoll_event ev={0},events[20];
+    struct epoll_event ev={0},events[MAX_CGI_LINK];
     epfd=epoll_create1(0);
     if(-1==epfd)
     {
@@ -271,8 +271,8 @@ int main(int argc, char *argv[])
 #ifdef LINUX
         if((nfds=epoll_wait(epfd,events,num,-1))<0)
         {
-            if(errno==EINTR)    //调试时使用，调试结束后必须注释
-                continue;
+            //if(errno==EINTR)    //调试时使用，调试结束后必须注释
+                //continue;
 
             perror("epoll_wait error");
 			writelog("epoll_wait error");
@@ -343,11 +343,12 @@ int main(int argc, char *argv[])
                 if(events[i].data.fd<0)
                     continue;
                 pthread_t tid;
-                if(pthread_create(&tid,NULL,(void*)CGI_Link,(void*)(&events[i].data.fd))<0)
+				int tmpfd=events[i].data.fd;
+                if(pthread_create(&tid,NULL,(void*)CGI_Link,(void*)(&tmpfd))<0)
                 {
                     perror("pthread_create epoll");
 					writelog("pthread_create epoll");
-                    close(events[i].data.fd);
+                    close(tmpfd);
                 }
                 epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
                 num--;

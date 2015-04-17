@@ -408,6 +408,8 @@ char* CLIENT_KEY;
 char* USER_ADDR;
 char* LISTEN_MSG_URL;
 
+int fresh_org;	//是否完成组织结构更新标识
+
 char clientkey[80];	//保存解码后的CLIENT_KEY
 uint keylen;	//解码后的CLIENT_KEY长度
 char author[64];	//存储OAuth验证码

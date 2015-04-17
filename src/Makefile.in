@@ -54,7 +54,8 @@ am_btserver_OBJECTS = cgi_business.$(OBJEXT) cgi_ctrl.$(OBJEXT) \
 	net.$(OBJEXT) protocol.$(OBJEXT) userlink.$(OBJEXT) \
 	log.$(OBJEXT) curl_ctl.$(OBJEXT) dpm_user.$(OBJEXT) \
 	encode_and_decode.$(OBJEXT) json_analysis.$(OBJEXT) \
-	webctrl.$(OBJEXT) compress.$(OBJEXT) server.$(OBJEXT)
+	webctrl.$(OBJEXT) compress.$(OBJEXT) md5.$(OBJEXT) \
+	server.$(OBJEXT)
 btserver_OBJECTS = $(am_btserver_OBJECTS)
 btserver_DEPENDENCIES = $(top_builddir)/CONFIG/libconfig.la \
 	$(top_builddir)/DES/libdes.la
@@ -206,10 +207,11 @@ btserver_SOURCES = cgi_business.c \
 	       json_analysis.c \
 	       webctrl.c \
 	       compress.c \
+	       md5.c \
 	       server.c
 
 delete_con_SOURCES = delete_con.c
-btserver_LDADD = -lpthread -lsybdb -lcurl -lssl -ljson-c \
+btserver_LDADD = -lpthread -lsybdb -lcurl -ljson-c -lz \
 	$(top_builddir)/CONFIG/libconfig.la \
 	$(top_builddir)/DES/libdes.la
 delete_con_LDADD = -lsybdb $(top_builddir)/CONFIG/libconfig.la
@@ -316,6 +318,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/freetdstodb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/json_analysis.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/md5.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mi_business.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protocol.Po@am__quote@

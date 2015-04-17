@@ -37,7 +37,6 @@ void OnGetOnlineList(unsigned char Result, char* srcdata, int srclen)
     if(NULL!=PC_OL)
         free(PC_OL);
     PC_OL=rx;
-
 	check_tcp=0;
 
 	/*不再立刻通知客户端10-10

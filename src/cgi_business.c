@@ -89,7 +89,7 @@ char* Cancellation(char* loginer)
 
 char* GetOrg_Stu()
 {
-	if(NULL==org_stu)
+	if(1==fresh_org||NULL==org_stu)
 	{
 		fresh_schema();
 		if(NULL==org_stu)

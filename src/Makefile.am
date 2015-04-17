@@ -17,11 +17,12 @@ btserver_SOURCES=cgi_business.c \
 	       json_analysis.c \
 	       webctrl.c \
 	       compress.c \
+	       md5.c \
 	       server.c
 
 delete_con_SOURCES=delete_con.c
 
-btserver_LDADD=-lpthread -lsybdb -lcurl -lssl -ljson-c
+btserver_LDADD=-lpthread -lsybdb -lcurl -ljson-c -lz
 
 delete_con_LDADD=-lsybdb
 
