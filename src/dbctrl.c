@@ -493,6 +493,22 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		uint imagelen=len-23;
 		if((templen=imagelen%8)>0)
 			imagelen=imagelen+(8-templen);
+
+		char extt[16]= {0};
+		memcpy(extt,context+len-6,3);
+		int datatype;
+		if(strcmp(extt,"jpg")==0||strcmp(extt,"png")==0||strcmp(extt,"gif")==0)
+		{
+			datatype=1;
+			sprintf(SQL,"insert into andriod_image(ImageLen,ImageExt,SrcUserId,UnitId,LinkType,DataType,ImageData) values(%u,'.%s','%s','%s',%d,1,0x",imagelen+16,extt,src,des,type-1);
+		}
+		else if(strcmp(extt,"amr")==0||strcmp(extt,"aac")==0)
+		{
+			datatype=2;
+			sprintf(SQL,"insert into android_voice(VoiceLen,VoiceExt,SrcUserId,UnitId,LinkType,DataType,VoiceData) values(%u,'.%s','%s','%s',%d,1,0x",imagelen+16,extt,src,des,type-1);
+		}
+		dbfreebuf(dbprocess);
+		dbcmd(dbprocess,SQL);
 		unsigned char* imagedes=(unsigned char*)malloc(imagelen);
 		if(NULL==imagedes)
 		{
@@ -501,12 +517,6 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		}
 		memset(imagedes,0,imagelen);
 		FinalD3desEncryption(deskey,context+10, imagedes, len-23);
-
-		char extt[16]= {0};
-		memcpy(extt,context+len-6,3);
-		sprintf(SQL,"insert into andriod_image(ImageLen,ImageExt,SrcUserId,UnitId,LinkType,DataType,ImageData) values(%u,'.%s','%s','%s',%d,1,0x",imagelen+16,extt,src,des,type-1);
-		dbfreebuf(dbprocess);
-		dbcmd(dbprocess,SQL);
 		char imglen[8]={0};
 		char desimglen[8]={0};
 		sprintf(imglen,"%d",len-23);
@@ -549,7 +559,10 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 		int pid;
 		char ext[16]= {0};
 		memset(SQL,0,256);
-		sprintf(SQL,"select top 1 id,ImageExt from andriod_image order by id desc");
+		if(datatype==1)
+			sprintf(SQL,"select top 1 id,ImageExt from andriod_image order by id desc");
+		else if(datatype==2)
+			sprintf(SQL,"select top 1 id,VoiceExt from android_voice order by id desc");
 		dbfreebuf(dbprocess);
 		dbcmd(dbprocess,SQL);
 		dbflag=0;
@@ -1208,6 +1221,81 @@ char* get_picture(int pid,char* ext)
 					return pic;
 				}
 				free(pic);*/
+			}
+		}
+	}
+	tdbh->ctrling=0;
+	return NULL;
+}
+
+char* get_sound(int sid,char* ext)
+{
+	char SQL[256]= {0};
+	sprintf(SQL,"select VoiceLen,DataType from android_voice where id=%d and VoiceExt='.%s'",sid,ext);
+
+/*****************************************新增连接池**************************************/
+	DbprocHandler tdbh=SelectDbproc();
+	if(NULL==tdbh)
+		return NULL;
+	DBPROCESS *dbprocess=tdbh->dbproc;
+/*****************************************************************************************/
+	dbcancel(dbprocess);    //清除上次查询结果
+	if(-1==CTRLDB(tdbh,SQL))
+	{
+		tdbh->ctrling=0;
+		return NULL;
+	}
+	if(dbresults(dbprocess)==SUCCEED)
+	{
+		int size,datatype;
+		dbbind(dbprocess,1,INTBIND,(DBINT)0,(BYTE*)&size);
+		dbbind(dbprocess,2,INTBIND,(DBINT)0,(BYTE*)&datatype);
+		if(dbnextrow(dbprocess) != NO_MORE_ROWS)
+		{
+			if((datatype!=1)||(size>MAX_DATA-24000))	//类型判断
+			{
+				tdbh->ctrling=0;
+				return NULL;
+			}
+			memset(SQL,0,256);
+			sprintf(SQL,"select VoiceData from android_voice where id=%d and VoiceExt='.%s'" ,sid,ext);
+			dbcancel(dbprocess);    //清除上次查询结果
+			if(-1==CTRLDB(tdbh,SQL))
+			{
+				tdbh->ctrling=0;
+				return NULL;
+			}
+			if(dbresults(dbprocess)==SUCCEED)
+			{
+				uint8_t *tmppic=(uint8_t*)malloc(size+2);
+				if(tmppic==NULL)
+				{
+					tdbh->ctrling=0;
+					return NULL;
+				}
+				dbbind(dbprocess,1,VARYBINBIND,(DBINT)0,(BYTE*)tmppic);
+				if(dbnextrow(dbprocess)!=NO_MORE_ROWS)
+				{
+					//明文长度
+					//uint imglen=atoi(tmppic+2);
+					//密文长度
+					uint desimglen=atoi(tmppic+10);
+
+					uint8_t *pic=(uint8_t*)malloc(desimglen+10);
+					if(pic==NULL)
+					{
+						free(tmppic);
+						tdbh->ctrling=0;
+						return NULL;
+					}
+					memset(pic,0,desimglen+10);
+					strcpy(pic,tmppic+2);
+					FinalD3desDecryption(deskey,tmppic+18,pic+10,desimglen);
+					free(tmppic);
+					tdbh->ctrling=0;
+					return pic;
+				}
+				free(tmppic);
 			}
 		}
 	}

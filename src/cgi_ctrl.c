@@ -474,6 +474,22 @@ CRM Business_deal(CM cm,int fd)
 			if(NULL==(text=Check_Logined(cm->sender)))
                 text=Check_Photo(cm->context);
 			break;
+		case BUS_CHE_NOT:
+			if(NULL==(text=Check_Logined(cm->sender)))
+                text=Check_fresh_notify(cm->sender);
+			if(0==strcmp(text,"FAULT")||0==strcmp(text,"null"))
+                flag=1;
+            else
+                flag=2;
+			break;
+		case BUS_CON_SUD:
+            if(NULL==(text=Check_Logined(cm->sender)))
+                text=GetSound(cm->context);
+            if(0==strcmp(text,"FAULT"))
+                flag=1;
+            else
+                flag=2;
+            break;
 		/*case BUS_CIMS_ID:
 			if(NULL==(text=Check_Logined(cm->sender)))
                 text=Get_CIMS_ID(cm->sender);
@@ -512,7 +528,7 @@ CRM Business_deal(CM cm,int fd)
 				crm->len=datalen;
 			}
         }
-        if(flag==1&&0!=strcmp(text,"nologin")&&0!=strcmp(text,"FAULT")&&0!=strcmp(text,"OK"))
+        if(flag==1&&0!=strcmp(text,"nologin")&&0!=strcmp(text,"FAULT")&&0!=strcmp(text,"OK")&&0!=strcmp(text,"login_error")&&0!=strcmp(text,"null"))
             free(text);
     }
     return crm;

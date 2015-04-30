@@ -20,6 +20,13 @@ char* Login(char* loginer,char* password)
 		return "login_error";
 	else if(ret==-1)
 		return "FAULT";
+	MS32CHARINFO ms32={0};
+    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGIN, REQUEST, NONE,48);
+    strcpy(ms32.id,loginer);
+    if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
+    {
+		return "FAULT";
+	}
 	UL ul=insert_point(user,loginer,-1);
 	if(NULL==ul)
 	{
@@ -27,14 +34,6 @@ char* Login(char* loginer,char* password)
 	}
 	strcpy(ul->access_token,retn.access_token);
 	strcpy(ul->refresh_token,retn.refresh_token);
-	MS32CHARINFO ms32={0};
-    ms32.bp=BsnsPacket_init(MC_BTANDRIOD_LOGIN, REQUEST, NONE,48);
-    strcpy(ms32.id,loginer);
-    if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
-    {
-        delete_point_log(user,ul);
-		return "FAULT";
-	}
     flush_list(user);
 	//不再立刻通知客户端10-10
     //cgi_all_send("41",loginer);
@@ -458,6 +457,24 @@ char* GetPicture(char* pid)
 		return pic;
 }
 
+char* GetSound(char* sid)
+{
+    int msid;
+	static pthread_mutex_t smt=PTHREAD_MUTEX_INITIALIZER;
+    char ext[16]= {0};
+	uint8_t* sud=NULL;
+    if(sscanf(sid,"%d.%s",&msid,ext)==2)
+	{
+		pthread_mutex_lock(&smt);
+        sud=get_sound(msid,ext);
+		pthread_mutex_unlock(&smt);
+	}
+	if(NULL==sud)
+		return "FAULT";
+	else
+		return sud;
+}
+
 char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t systype)
 {
     int ret=-1,num=-1,t;
@@ -580,6 +597,18 @@ char* UpdateLoginerMsg(char* loginer,char* context)
 	if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
         return "FAULT";
     return "OK";
+}
+
+char* Check_fresh_notify(char* loginer)
+{
+	UL ul=get_point(user,loginer);
+	if(ul==NULL)
+		return "FAULT";
+	char* result=web_get_notify(ul);
+	if(result==NULL)
+		return "null";
+	else
+		return xml_compress(result,1);
 }
 
 /*char* UpdateLoginerMsg(char* loginer,char* context)

@@ -59,6 +59,8 @@
 #define BUS_UPDATE_LOGINER_MSG 18   //修改个人资料
 #define BUS_CON_PIC 19  //获取会话内容中的图片
 #define BUS_CHE_PHOTO 20	//验证用户头像
+#define BUS_CHE_NOT 21	//获取通知公告未读数
+#define BUS_CON_SUD 22	//获取会话内容中的语音文件
 //#define BUS_CIMS_ID 21	//获取CIMS的用户ID
 /***********************************************************************************/
 
@@ -478,8 +480,9 @@ char* GetImf(UL ul,char* loginer); //获取通知队列
 //void strrpl(char* pDstOut, char* pSrcIn, const char* pSrcRpl, const char* pDstRpl); //字符串替换
 //int Count(char *const a,char *const b); //子字符串统计
 char* Check_Photo(char* context);	//验证头像
+char* Check_fresh_notify(char* loginer);	//获取当前通知公告未读数
 //char* Get_CIMS_ID(char* uid);	//获取CIMS的ID
-
+char* GetSound(char* sid);    //获取对话内容中的语音文件
 /***************************************************************************************/
 
 /****************************************mi_business.c************************************/
@@ -526,6 +529,7 @@ int check_user_photo(char* uid,char* md5);	//验证数据库中photo的MD5字段
 //char* getCIMS_id(char *uid);	//查询CIMS的ID
 int get_sign(char* uid,char* sign);	//获取用户签名
 int update_user_mood(char* uid,char* Mood);	//更新用户签名
+char* get_sound(int sid,char* ext);   //获取对话语音文件
 /********************************************************************************************************************/
 
 /********************************************userlink.c*********************/
@@ -554,6 +558,7 @@ char* web_get_schema(UL ul,int flag);	//获取组织结构
 char* web_get_info(UL ul,char* desid,int flag);	//获取用户信息
 int web_check_avatar(char* pid,char* md5val);	//验证头像文件MD5
 int web_updata_info(UL ul,char* Mood,char* Other);	//更新用户信息
+char* web_get_notify(UL ul);	//获取通知公告未读数
 void fresh_schema();	//更新组织结构
 void* listen_schema();	//组织结构更新通知接收线程
 /******************************************************************************************************/

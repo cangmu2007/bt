@@ -7,6 +7,7 @@
 #define BUS_INFO "/resource/user/get_info"
 #define BUS_MOD	"/resource/user/set_my_info"
 #define BUS_RES "/resource/file/get?file_id="
+#define BUS_MSG "/resource/msg/Receive"
 
 char* setUrl(char* url,int ssl,char* fun,char* other)
 {
@@ -255,8 +256,6 @@ int web_check_avatar(char* pid,char* md5val)
 	if((ret=curl_get(setUrl(furl,1,BUS_RES,pid),&rd,30,30,NULL,0))<0)
 	{
 		printf("curl_get error\n");
-		writelog("curl_get error");
-
 	}
 	else
 	{
@@ -323,6 +322,72 @@ int web_updata_info(UL ul,char* Mood,char* Other)
 	}
 	free(rd.data);
 	return ret;
+}
+
+char* web_get_notify(UL ul)
+{
+	struct curl_slist *headers=NULL;
+	ReturnData rd={0};
+	char furl[128]={0};
+	int ret=-1,r=1,res;
+	char* result=(char*)malloc(512);
+	if(NULL==result)
+	{
+		return NULL;
+	}
+	memset(result,0,512);
+
+	while(r==1)
+	{
+		headers=set_header(USER_ADDR,BEARER,ul->access_token);
+		if((ret=curl_post(setUrl(furl,1,BUS_MSG,NULL),NULL,0,&rd,30,30,headers,1))<0)
+		{
+			printf("curl_post error\n");
+			writelog("curl_post error");
+			r=-1;
+			free(result);
+			result=NULL;
+		}
+		else
+		{
+			if(200==ret)
+			{
+				r=analysis_res_notify(rd.data,result,512);
+				if(r==-1)
+				{
+					free(result);
+					result=NULL;
+				}
+			}
+			else if(400==ret)
+			{
+				res=analysis_res_error(rd.data);
+				if(10021==res)
+				{
+					if(fresh_token(ul)<0)
+					{
+						r=-1;
+						free(result);
+						result=NULL;
+					}
+				}
+				else
+				{
+					r=-1;
+					free(result);
+					result=NULL;
+				}
+			}
+			else
+			{
+				r=-1;
+				free(result);
+				result=NULL;
+			}
+			free(rd.data);
+		}
+	}
+	return result;
 }
 
 void fresh_schema()

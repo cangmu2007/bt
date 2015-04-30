@@ -62,4 +62,8 @@ int analysis_error(char* str,char* out);
 //解析资源出错信息
 int analysis_res_error(char* str);
 
+//解析通知公告未读条目
+//返回值：1为通知未读取到尾部，0为通知已读取到尾部，-1为通知读取出错
+int analysis_res_notify(char* str,char* out,uint outlen);
+
 #endif

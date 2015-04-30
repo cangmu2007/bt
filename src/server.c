@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 
     /*************************************epoll方法定义，只能用于Linux**********************/
 #ifdef LINUX   
-    struct epoll_event ev={0},events[MAX_CGI_LINK];
+    struct epoll_event ev={0},events[MAX_CGI_LINK*20];
     epfd=epoll_create1(0);
     if(-1==epfd)
     {

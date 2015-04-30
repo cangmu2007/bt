@@ -1,4 +1,5 @@
 #include "json_analysis.h"
+#include "encode_and_decode.h"
 
 char* dpm_json2xml(json_object* obj)
 {
@@ -222,6 +223,52 @@ int analysis_res_error(char* str)
 	if(json_object_object_get_ex(pobj,"ret",&obj))
 	{
 		ret=json_object_get_int(obj);
+	}
+	json_object_put(pobj);
+	return ret;
+}
+
+int analysis_res_notify(char* str,char* out,uint outlen)
+{
+	char* tmp=NULL;
+	int ret=-1;
+	json_object *pobj = json_tokener_parse(str);
+	if(NULL==pobj)
+		return ret;
+
+	json_object *objend=NULL;
+	if(json_object_object_get_ex(pobj,"end",&objend))
+	{
+		if(json_object_get_boolean(objend))
+			ret=0;
+		else
+			ret=1;
+	}
+	else
+		ret=-1;
+
+	json_object *obj=NULL;
+	int flg=0;
+	if(json_object_object_get_ex(pobj,"message",&obj))
+	{
+		json_object_object_foreach(obj,key,value)
+		{
+			if(strcmp(key,"operate_name")==0)
+			{
+				if(strcmp("iconstate",json_object_get_string(value))==0)
+					flg=1;
+			}
+			if(flg&&strcmp(key,"data_body")==0)
+			{
+				tmp=(char*)json_object_get_string(value);
+			}
+		}
+		if(NULL!=tmp)
+		{
+			memset(out,0,outlen);
+			if(base64_decode(tmp,out)<0)
+				ret=-1;
+		}
 	}
 	json_object_put(pobj);
 	return ret;
