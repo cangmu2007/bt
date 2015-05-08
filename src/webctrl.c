@@ -1,5 +1,6 @@
 #include "head.h"
 #include "HMACSHA1.h"
+#include <time.h>
 
 //用户中心相关地址
 #define BUS_TOK "/auth/token"
@@ -238,6 +239,7 @@ char* web_get_info(UL ul,char* desid,int flag)
 			{
 				if(fresh_token(ul)==0)
 				{
+					free(results);
 					results=web_get_info(ul,desid,1);
 				}
 			}
@@ -324,12 +326,20 @@ int web_updata_info(UL ul,char* Mood,char* Other)
 	return ret;
 }
 
-char* web_get_notify(UL ul)
+void getParameter(char *out)
+{
+	time_t timer=time(NULL);
+	timer=timer-604800; //60*60*24*7
+	struct tm *tblock=localtime(&timer);
+	sprintf(out,"from=%.2d%%2d%.2d%%2d%.2d+%.2d%%3a%.2d%%3a%.2d&num=100", (1900+tblock->tm_year),(1+tblock->tm_mon),tblock->tm_mday,tblock->tm_hour, tblock->tm_min, tblock->tm_sec);
+}
+
+char* web_get_notify(UL ul,int flag)
 {
 	struct curl_slist *headers=NULL;
 	ReturnData rd={0};
 	char furl[128]={0};
-	int ret=-1,r=1,res;
+	int ret=-1,res;
 	char* result=(char*)malloc(512);
 	if(NULL==result)
 	{
@@ -337,56 +347,56 @@ char* web_get_notify(UL ul)
 	}
 	memset(result,0,512);
 
-	while(r==1)
+	char parameter[48]={0};
+	headers=set_header(USER_ADDR,BEARER,ul->access_token);
+	memset(parameter,0,48);
+	getParameter(parameter);
+	if((ret=curl_post(setUrl(furl,1,BUS_MSG,NULL),parameter,strlen(parameter),&rd,30,30,headers,1))<0)
 	{
-		headers=set_header(USER_ADDR,BEARER,ul->access_token);
-		if((ret=curl_post(setUrl(furl,1,BUS_MSG,NULL),NULL,0,&rd,30,30,headers,1))<0)
+		printf("curl_post error\n");
+		writelog("curl_post error");
+		free(result);
+		result=NULL;
+	}
+	else
+	{
+		if(200==ret)
 		{
-			printf("curl_post error\n");
-			writelog("curl_post error");
-			r=-1;
-			free(result);
-			result=NULL;
-		}
-		else
-		{
-			if(200==ret)
+			if(analysis_res_notify(rd.data,result)!=0)
 			{
-				r=analysis_res_notify(rd.data,result,512);
-				if(r==-1)
+				free(result);
+				result=NULL;
+			}
+		}
+		else if(400==ret&&flag)
+		{
+			res=analysis_res_error(rd.data);
+			if(10021==res)
+			{
+				if(fresh_token(ul)<0)
 				{
 					free(result);
 					result=NULL;
-				}
-			}
-			else if(400==ret)
-			{
-				res=analysis_res_error(rd.data);
-				if(10021==res)
-				{
-					if(fresh_token(ul)<0)
-					{
-						r=-1;
-						free(result);
-						result=NULL;
-					}
 				}
 				else
 				{
-					r=-1;
 					free(result);
-					result=NULL;
+					result=web_get_notify(ul,0);
 				}
 			}
 			else
 			{
-				r=-1;
 				free(result);
 				result=NULL;
 			}
-			free(rd.data);
 		}
+		else
+		{
+			free(result);
+			result=NULL;
+		}	
 	}
+	free(rd.data);
 	return result;
 }
 
@@ -425,6 +435,7 @@ void* listen_schema()
 			if(200==ret)
 			{
 				printf("fresh schema\n");
+				writelog("fresh schema");
 				fresh_schema();
 				MSG_INFO(CTRLPERSON);
 				sleep(30);

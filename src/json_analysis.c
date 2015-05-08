@@ -18,7 +18,6 @@ char* dpm_json2xml(json_object* obj)
 		tempdpm=json_object_array_get_idx(obj,i);
 		if(NULL==tempdpm)
 		{
-			json_object_put(tempdpm);
 			continue;
 		}
 
@@ -39,7 +38,6 @@ char* dpm_json2xml(json_object* obj)
 						tempuser=json_object_array_get_idx(tempusers,j);
 						if(NULL==tempuser)
 						{
-							json_object_put(tempusers);
 							continue;
 						}
 						char* username=NULL;
@@ -228,48 +226,50 @@ int analysis_res_error(char* str)
 	return ret;
 }
 
-int analysis_res_notify(char* str,char* out,uint outlen)
+int analysis_res_notify(char* str,char* out)
 {
-	char* tmp=NULL;
 	int ret=-1;
 	json_object *pobj = json_tokener_parse(str);
 	if(NULL==pobj)
 		return ret;
 
-	json_object *objend=NULL;
-	if(json_object_object_get_ex(pobj,"end",&objend))
-	{
-		if(json_object_get_boolean(objend))
-			ret=0;
-		else
-			ret=1;
-	}
-	else
-		ret=-1;
-
+	char* tmp=NULL;
 	json_object *obj=NULL;
-	int flg=0;
-	if(json_object_object_get_ex(pobj,"message",&obj))
+	if(json_object_object_get_ex(pobj,"messages",&obj))
 	{
-		json_object_object_foreach(obj,key,value)
+		uint msg_len=json_object_array_length(obj);
+		if(msg_len>0)
 		{
-			if(strcmp(key,"operate_name")==0)
+			int i;
+			json_object* temp_msg=NULL;
+			for(i=0;i<msg_len;i++)
 			{
-				if(strcmp("iconstate",json_object_get_string(value))==0)
-					flg=1;
+				temp_msg=json_object_array_get_idx(obj,i);
+				if(NULL==temp_msg)
+				{
+					continue;
+				}
+				int flg=0;
+				json_object_object_foreach(temp_msg,key,value)
+				{
+					if(strcmp(key,"operate_name")==0)
+					{
+						if(strcmp("iconstate",json_object_get_string(value))==0)
+							flg=1;
+					}
+					if(flg&&strcmp(key,"data_body")==0)
+					{
+						tmp=(char*)json_object_get_string(value);
+						break;
+					}
+				}
 			}
-			if(flg&&strcmp(key,"data_body")==0)
-			{
-				tmp=(char*)json_object_get_string(value);
-			}
-		}
-		if(NULL!=tmp)
-		{
-			memset(out,0,outlen);
-			if(base64_decode(tmp,out)<0)
-				ret=-1;
 		}
 	}
+	if(NULL!=tmp)
+		ret=base64_decode(tmp,out);
+	else
+		ret=1;
 	json_object_put(pobj);
 	return ret;
 }

@@ -558,7 +558,7 @@ char* web_get_schema(UL ul,int flag);	//获取组织结构
 char* web_get_info(UL ul,char* desid,int flag);	//获取用户信息
 int web_check_avatar(char* pid,char* md5val);	//验证头像文件MD5
 int web_updata_info(UL ul,char* Mood,char* Other);	//更新用户信息
-char* web_get_notify(UL ul);	//获取通知公告未读数
+char* web_get_notify(UL ul,int flag);	//获取通知公告未读数
 void fresh_schema();	//更新组织结构
 void* listen_schema();	//组织结构更新通知接收线程
 /******************************************************************************************************/

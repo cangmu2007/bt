@@ -604,7 +604,7 @@ char* Check_fresh_notify(char* loginer)
 	UL ul=get_point(user,loginer);
 	if(ul==NULL)
 		return "FAULT";
-	char* result=web_get_notify(ul);
+	char* result=web_get_notify(ul,1);
 	if(result==NULL)
 		return "null";
 	else
