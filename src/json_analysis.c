@@ -255,19 +255,25 @@ int analysis_res_notify(char* str,char* out)
 					if(strcmp(key,"operate_name")==0)
 					{
 						if(strcmp("iconstate",json_object_get_string(value))==0)
+						{
 							flg=1;
+						}
 					}
-					if(flg&&strcmp(key,"data_body")==0)
+					if(flg&&(strcmp(key,"data_body")==0))
 					{
 						tmp=(char*)json_object_get_string(value);
-						break;
 					}
 				}
+				if(NULL!=tmp)
+					break;
 			}
 		}
 	}
 	if(NULL!=tmp)
-		ret=base64_decode(tmp,out);
+	{
+		base64_decode(tmp,out);
+		ret=0;
+	}
 	else
 		ret=1;
 	json_object_put(pobj);

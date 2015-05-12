@@ -15,13 +15,13 @@ static size_t writeData(void* ptr, size_t size, size_t nmemb, void* stream)
 	}
 	size_t realsize = size * nmemb;
 	RetData data=(RetData)stream;
-	char* temp=(int8_t*)realloc(data->data,data->len+1+realsize);
+	int8_t* temp=(int8_t*)realloc(data->data,data->len+1+realsize);
 	if(NULL==temp)
 	{
 		return -1;
 	}
 	data->data=temp;
-	memset(data->data,0,data->len+1+realsize);
+	memset(&(data->data[data->len]),0,1+realsize);
 	memcpy(&(data->data[data->len]),ptr,realsize);
 	data->len+=realsize;
 	return realsize;
@@ -60,7 +60,9 @@ int curl_post(char* url,int8_t* postdata,uint postlen,RetData data,uint link_tim
 	int ret=-1;
 	data->data=(int8_t*)malloc(1);
 	if(NULL==data->data)
+	{
 		return ret;
+	}
 	data->len=0;
 	CURL* curl=curl_easy_init();
 	if(NULL==curl)

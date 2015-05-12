@@ -8,7 +8,7 @@
 #define BUS_INFO "/resource/user/get_info"
 #define BUS_MOD	"/resource/user/set_my_info"
 #define BUS_RES "/resource/file/get?file_id="
-#define BUS_MSG "/resource/msg/Receive"
+#define BUS_MSG "/resource/msg/Receive2"
 
 char* setUrl(char* url,int ssl,char* fun,char* other)
 {
@@ -362,10 +362,13 @@ char* web_get_notify(UL ul,int flag)
 	{
 		if(200==ret)
 		{
-			if(analysis_res_notify(rd.data,result)!=0)
+			if(NULL!=rd.data)
 			{
-				free(result);
-				result=NULL;
+				if(analysis_res_notify(rd.data,result)!=0)
+				{
+					free(result);
+					result=NULL;
+				}
 			}
 		}
 		else if(400==ret&&flag)
