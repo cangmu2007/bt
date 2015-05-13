@@ -196,17 +196,16 @@ int temp_dpm2dpm_list(Dpm head,Dpm ele)
 int insert_temp2dpm(Dpm head)
 {
 	Dpm p=head,q=thead,t=NULL;
-	while(thead->next)
+	if(thead==NULL)
+		return -1;
+	while(q->next)
 	{
-		while(q&&q->next)
+		t=q->next->next;
+		if(temp_dpm2dpm_list(p,q->next)<0)
 		{
-			t=q->next->next;
-			if(0==temp_dpm2dpm_list(p,q->next))
-			{
-				q->next=t;
-			}
-			q=q->next;
+			free(q->next);
 		}
+		q->next=t;
 	}
 	return 0;
 }
