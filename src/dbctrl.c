@@ -1498,24 +1498,26 @@ char* search_info(char* loginer,int type)
 				while(dbnextrow(dbprocess)!=NO_MORE_ROWS)
 				{
 					if(len<5120)
-						FinalD3desDecryption(deskey,Data+2,dData,Datalen);
-					sprintf(tmp,"<message><sender>%s</sender><type>1</type><id>%d</id><typeid>null</typeid><time>%s</time><context><![CDATA[%s]]></context></message>",SrcUserId,mid,SendTime,dData);
-					len=strlen(xml);
-					tlen=strlen(tmp);
-					char* tempxml=(char*)realloc(xml,len+1+tlen);
-					if(!tempxml)
 					{
-						break;
+						FinalD3desDecryption(deskey,Data+2,dData,Datalen);
+						sprintf(tmp,"<message><sender>%s</sender><type>1</type><id>%d</id><typeid>null</typeid><time>%s</time><context><![CDATA[%s]]></context></message>",SrcUserId,mid,SendTime,dData);
+						len=strlen(xml);
+						tlen=strlen(tmp);
+						char* tempxml=(char*)realloc(xml,len+1+tlen);
+						if(!tempxml)
+						{
+							break;
+						}
+						xml=tempxml;
+						memset(xml+len,0,tlen+1);
+						strcpy(xml+len,tmp);
+						memset(tmp,0,tlen);
+						memset(SrcUserId,0,48);
+						memset(SendTime,0,20);
+						memset(Data,0,4100);
+						memset(dData,0,4100);
+						ret=1;
 					}
-					xml=tempxml;
-					memset(xml+len,0,tlen+1);
-					strcpy(xml+len,tmp);
-					memset(tmp,0,tlen);
-					memset(SrcUserId,0,48);
-					memset(SendTime,0,20);
-					memset(Data,0,4100);
-					memset(dData,0,4100);
-					ret=1;
 				}
 			}
 		}
