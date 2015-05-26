@@ -1,5 +1,4 @@
 /**
- * @author: cangmu
  * @description: C 语言使用配置文件库.
  */
 #ifndef UTIL__STRING_H
@@ -7,28 +6,28 @@
 
 #include <string.h>
 
-inline static
-int is_whitespace(const int ch){
+static int is_whitespace(const int ch)
+{
 	return strchr(" \t\r\n", ch) != NULL;
 }
 
-inline static
-int is_alpha(const int ch){
+static int is_alpha(const int ch)
+{
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 }
 
-inline static
-int is_digit(const int ch){
+static int is_digit(const int ch)
+{
 	return (ch >= '0' && ch <= '9');
 }
 
-inline static
-int is_wordchar(const int ch){
+static int is_wordchar(const int ch)
+{
 	return (ch == '_') || is_alpha(ch) || is_digit(ch);
 }
 
-inline static
-int is_empty_str(const char *str){
+static int is_empty_str(const char *str)
+{
 	const char *p = str;
 	while(*p && is_whitespace(*p)){
 		p++;
@@ -37,8 +36,8 @@ int is_empty_str(const char *str){
 }
 
 /* 返回左边不包含空白字符的字符串的指针 */
-inline static
-char *ltrim(char *str){
+static char *ltrim(char *str)
+{
 	char *p = str;
 	while(*p && is_whitespace(*p)){
 		p++;
@@ -47,8 +46,8 @@ char *ltrim(char *str){
 }
 
 /* 返回右边不包含空白字符的字符串的指针 */
-inline static
-char *rtrim(char *str){
+static char *rtrim(char *str)
+{
 	char *p;
 	p = str + strlen(str) - 1;
 	while(p >= str && is_whitespace(*p)){
@@ -59,8 +58,8 @@ char *rtrim(char *str){
 }
 
 /* 返回左右两边不包含空白字符的字符串的指针 */
-inline static
-char *trim(char *str){
+static char *trim(char *str)
+{
 	char *p;
 	p = ltrim(str);
 	rtrim(p);
