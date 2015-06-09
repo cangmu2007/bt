@@ -27,6 +27,7 @@ char* Login(char* loginer,char* password)
     {
 		return "FAULT";
 	}
+	//MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1);
 	UL ul=insert_point(user,loginer,-1);
 	if(NULL==ul)
 	{
@@ -230,7 +231,10 @@ char* SetShield(char* loginer,char* context)
     mgc.opertype=type;
     mgc.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_NOTIFY, REQUEST, NONE,48+sizeof(uint32_t));
     if(MI_Write((char*)&mgc,sizeof(MSGROUPCTRL),1)<0)
+	{
         return "FAULT";
+	}
+	//MI_Write((char*)&mgc,sizeof(MSGROUPCTRL),1)
     return "OK";
 }
 
@@ -313,6 +317,7 @@ char* NewGroup(char* loginer,char* context)
 	{
         return "FAULT";
 	}
+	//MI_Write((char*)&mr,sizeof(MSGROUP),1)
     char tmp[48]= {0};
     uint len=0;
     while(sscanf(id+len,"%[^|]",tmp)==1)
@@ -360,7 +365,7 @@ char* NewMulti(char* loginer,char* context)
 	{
         return "FAULT";
 	}
-
+	//MI_Write((char*)&mr,sizeof(MSGROUP),1)
     char tmp[48]= {0};
     uint len=0;
     while(sscanf(id+len,"%[^|]",tmp)==1)
@@ -407,7 +412,9 @@ char* AddMulti(char* context)
     ret=MI_Write((char*)mm,sizeof(MSEXTAPPREG_REQ)+len,1);
     free(mm);
     if(-1==ret)
+	{
         return "FAULT";
+	}
     return "OK";
 }
 
@@ -421,7 +428,10 @@ char* ExitGroup(char* loginer,char* gid)
     mg.gid=atoi(gid);
     mg.bp=BsnsPacket_init(MC_BTANDRIOD_GROUP_DELUSER, REQUEST, NONE,48+sizeof(uint32_t));
     if(MI_Write((char*)&mg,sizeof(MSGROUP),1)<0)
+	{
         return "FAULT";
+	}
+	//MI_Write((char*)&mg,sizeof(MSGROUP),1);
     return  GetGroup(loginer);
 }
 
@@ -435,7 +445,10 @@ char* ExitMulti(char* loginer,char* mid)
     mg.gid=atoi(mid);
     mg.bp=BsnsPacket_init(MC_BTANDRIOD_MULTI_DELUSER, REQUEST, NONE,48+sizeof(uint32_t));
     if(MI_Write((char*)&mg,sizeof(MSGROUP),1)<0)
+	{
         return "FAULT";
+	}
+	//MI_Write((char*)&mg,sizeof(MSGROUP),1);
     return GetMulti(loginer);
 }
 
@@ -517,6 +530,7 @@ char* Talk(int type,char* src,char* des,char* context,uint32_t llen,uint32_t sys
             free(mg);
         }
     }
+	//if(t==0&&-1==num)
     if((t==0)&&(-1==ret||-1==num))
         return "FAULT";
     return "OK";
@@ -592,10 +606,16 @@ char* UpdateLoginerMsg(char* loginer,char* context)
 	strcpy(ms32.id,loginer);
     ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_BASEINFO, REQUEST, NONE,48);
     if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
+	{
         return "FAULT";
+	}
+	//MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1);
 	ms32.bp=BsnsPacket_init(MC_BTANDRIOD_CTM_MOOD, REQUEST, NONE,48);
 	if(MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1)<0)
+	{
         return "FAULT";
+	}
+	//MI_Write((char*)&ms32,sizeof(MS32CHARINFO),1);
     return "OK";
 }
 

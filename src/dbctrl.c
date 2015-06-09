@@ -664,6 +664,7 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 			free(d);
 			d=NULL;
 		}
+		//if(num==-1)
 		if(ret==-1||num==-1)
 		{
 			tdbh->ctrling=0;
@@ -780,6 +781,7 @@ int insert_talklist(char* src,char* des,char* context,uint32_t len,int type,uint
 			free(d);
 			d=NULL;
 		}
+		//if(num==-1)
 		if(ret==-1||num==-1)
 		{
 			tdbh->ctrling=0;

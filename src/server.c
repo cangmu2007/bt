@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	}
 	
 	//转入后台运行
-	if(daemon(1, 1) < 0)  
+	if(daemon(0, 0) < 0)  
     {  
         perror("error daemon"); 
         exit(-1);  
