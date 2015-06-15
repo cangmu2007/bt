@@ -3683,78 +3683,10 @@ _ACEOF
 fi
 
 # Checks for libraries.
-
-{ $as_echo "$as_me:$LINENO: checking for sybdb in -lpthread" >&5
-$as_echo_n "checking for sybdb in -lpthread... " >&6; }
-if test "${ac_cv_lib_pthread_sybdb+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lpthread  $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char sybdb ();
-int
-main ()
-{
-return sybdb ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_link") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext && {
-	 test "$cross_compiling" = yes ||
-	 $as_test_x conftest$ac_exeext
-       }; then
-  ac_cv_lib_pthread_sybdb=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_lib_pthread_sybdb=no
-fi
-
-rm -rf conftest.dSYM
-rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_pthread_sybdb" >&5
-$as_echo "$ac_cv_lib_pthread_sybdb" >&6; }
-if test "x$ac_cv_lib_pthread_sybdb" = x""yes; then
-  z
-fi
-
+#AC_CHECK_LIB([pthread],[sybdb],[z],[json-c],[curl],[event])
 
 # Checks for header files.
+
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -4386,8 +4318,7 @@ done
 
 
 
-
-for ac_header in arpa/inet.h fcntl.h netinet/in.h pthread.h errno.h sys/un.h fcntl.h semaphore.h sybfront.h sybdb.h
+for ac_header in arpa/inet.h fcntl.h netinet/in.h pthread.h errno.h sys/un.h fcntl.h semaphore.h time.h
 do
 as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -11523,6 +11454,83 @@ _ACEOF
   esac
 
 
+  { $as_echo "$as_me:$LINENO: checking for uint64_t" >&5
+$as_echo_n "checking for uint64_t... " >&6; }
+if test "${ac_cv_c_uint64_t+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  ac_cv_c_uint64_t=no
+     for ac_type in 'uint64_t' 'unsigned int' 'unsigned long int' \
+	 'unsigned long long int' 'unsigned short int' 'unsigned char'; do
+       cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array @<:@1 - 2 * !(($ac_type) -1 >> (64 - 1) == 1)@:>@;
+test_array @<:@0@:>@ = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  case $ac_type in
+  uint64_t) ac_cv_c_uint64_t=yes ;;
+  *) ac_cv_c_uint64_t=$ac_type ;;
+esac
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+       test "$ac_cv_c_uint64_t" != no && break
+     done
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_c_uint64_t" >&5
+$as_echo "$ac_cv_c_uint64_t" >&6; }
+  case $ac_cv_c_uint64_t in #(
+  no|yes) ;; #(
+  *)
+    
+cat >>confdefs.h <<\_ACEOF
+@%:@define _UINT64_T 1
+_ACEOF
+
+    
+cat >>confdefs.h <<_ACEOF
+@%:@define uint64_t $ac_cv_c_uint64_t
+_ACEOF
+;;
+  esac
+
+
   { $as_echo "$as_me:$LINENO: checking for uint8_t" >&5
 $as_echo_n "checking for uint8_t... " >&6; }
 if test "${ac_cv_c_uint8_t+set}" = set; then
@@ -12185,7 +12193,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files CONFIG/Makefile DES/Makefile COMPRESS/Makefile src/Makefile Makefile"
+ac_config_files="$ac_config_files CONFIG/Makefile DES/Makefile src/Makefile Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -13074,7 +13082,6 @@ do
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "CONFIG/Makefile") CONFIG_FILES="$CONFIG_FILES CONFIG/Makefile" ;;
     "DES/Makefile") CONFIG_FILES="$CONFIG_FILES DES/Makefile" ;;
-    "COMPRESS/Makefile") CONFIG_FILES="$CONFIG_FILES COMPRESS/Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
 
@@ -14541,4 +14548,3 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:$LINENO: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-

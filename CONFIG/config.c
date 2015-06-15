@@ -12,25 +12,30 @@
 
 #define PRINT_TRACE(fmt, args...)	printf(__FILE__ "(%d): " fmt "\n", __LINE__, ##args)
 
-static int is_kv_seperator(int ch){
+static int is_kv_seperator(int ch)
+{
 	return strchr(":=", ch) != NULL;
 }
 
 static struct config *cfg_find_child(struct config *cfg, char *key);
 
-static struct config *add_node(struct config *parent, char *key, char *val, int lineno){
+static struct config *add_node(struct config *parent, char *key, char *val, int lineno)
+{
 	struct config *cfg;
 	int size;
 
-	if(key[0] != '#' && cfg_find_child(parent, key)){
+	if(key[0] != '#' && cfg_find_child(parent, key))
+	{
 		//log_error("line: %d, duplicated '%s'", lineno, key);
 		return NULL;
 	}
 
-	if(parent->size == parent->count){
+	if(parent->size == parent->count)
+	{
 		size = parent->size * 2 + 5;
 		cfg = realloc(parent->items, size * sizeof(*cfg));
-		if(!cfg){
+		if(!cfg)
+		{
 			return NULL;
 		}
 
@@ -58,7 +63,8 @@ static struct config *add_node(struct config *parent, char *key, char *val, int 
 	return cfg;
 }
 
-struct config *cfg_load_file(char *filename){
+struct config *cfg_load_file(char *filename)
+{
 	struct config *root_cfg, *cfg;
 	FILE *fp;
 	char buf[CONFIG_MAX_LINE + 3];
@@ -68,7 +74,8 @@ struct config *cfg_load_file(char *filename){
 	int i, len;
 
 	fp = fopen(filename, "r");
-	if(!fp){
+	if(!fp)
+	{
 		//log_error("error opening file '%s': %s", filename, strerror(errno));
 		return NULL;
 	}
@@ -88,64 +95,78 @@ struct config *cfg_load_file(char *filename){
 	cfg = root_cfg;
 	last_indent = 0;
 
-	while(fgets(buf, sizeof(buf), fp)){
+	while(fgets(buf, sizeof(buf), fp))
+	{
 		lineno++;
 
 		rtrim(buf);
 		len = strlen(buf);
 
-		if(len > CONFIG_MAX_LINE){
+		if(len > CONFIG_MAX_LINE)
+		{
 			//log_error("line(%d) too long: %d, should be no more than %d characters",
 				//lineno, len, CONFIG_MAX_LINE);
 			goto err;
 		}
-		if(is_empty_str(buf)){
+		if(is_empty_str(buf))
+		{
 			continue;
 		}
 
 		/* 有效行以 \t* 开头 */
 		indent = 0;
 		key = buf;
-		while(*key == '\t'){
+		while(*key == '\t')
+		{
 			indent++;
 			key++;
 		}
 
-		if(indent <= last_indent){
-			for(i = indent; i <= last_indent; i++){
+		if(indent <= last_indent)
+		{
+			for(i = indent; i <= last_indent; i++)
+			{
 				/* 第一个配置时, 此条件为真 */
-				if(cfg != root_cfg){
+				if(cfg != root_cfg)
+				{
 					cfg = cfg->parent;
 				}
 			}
-		}else if(indent > last_indent + 1){
+		}else if(indent > last_indent + 1)
+		{
 			//log_error("invalid indent line(%d)", lineno);
 			goto err;
 		}
 
 		/* 注释行以 \t*# 开头 */
-		if(*key == '#'){
+		if(*key == '#')
+		{
 			//PRINT_TRACE("%s", key);
 			cfg = add_node(cfg, "#", key + 1, lineno);
-			if(cfg == NULL){
+			if(cfg == NULL)
+			{
 				goto err;
 			}
 			last_indent = indent;
 			continue;
-		}else if(is_whitespace(*key)){
+		}else if(is_whitespace(*key))
+		{
 			//log_error("invalid line(%d): unexpected whitespace char '%c'", lineno, *key);
 			goto err;
 		}
 
 		val = key;
 		/* 跳过键名 */
-		while(*val && !is_kv_seperator(*val)){
+		while(*val && !is_kv_seperator(*val))
+		{
 			val++;
 		}
-		if(*val == '\0'){
+		if(*val == '\0')
+		{
 			//log_error("invalid line(%d): %s, expecting ':' or '='", lineno, key);
 			goto err;
-		}else if(!is_kv_seperator(*val)){
+		}else if(!is_kv_seperator(*val))
+		{
 			//log_error("invalid line(%d): unexpected char '%c', expecting ':' or '='", lineno, *val);
 			goto err;
 		}
@@ -156,13 +177,15 @@ struct config *cfg_load_file(char *filename){
 		val = trim(val);
 
 		cfg = add_node(cfg, key, val, lineno);
-		if(cfg == NULL){
+		if(cfg == NULL)
+		{
 			goto err;
 		}
 
 		last_indent = indent;
 	}
-	if(ferror(fp)){
+	if(ferror(fp))
+	{
 		//log_error("error while reading file %s", filename);
 		goto err;
 	}
@@ -171,7 +194,8 @@ struct config *cfg_load_file(char *filename){
 	return root_cfg;
 
 err:
-	if(root_cfg){
+	if(root_cfg)
+	{
 		cfg_free(root_cfg);
 	}
 
@@ -179,20 +203,25 @@ err:
 	return NULL;
 }
 
-static void _cfg_free(struct config *cfg, int indent){
+static void _cfg_free(struct config *cfg, int indent)
+{
 	struct config *c;
 	int i;
 
 	//PRINT_TRACE("%*sfree %s(%d)", indent * 4, "", cfg->key, cfg->count);
 
-	if(cfg->key){
+	if(cfg->key)
+	{
 		free(cfg->key);
 	}
-	if(cfg->val){
+	if(cfg->val)
+	{
 		free(cfg->val);
 	}
-	if(cfg->items){
-		for(i = 0; i < cfg->count; i++){
+	if(cfg->items)
+	{
+		for(i = 0; i < cfg->count; i++)
+		{
 			c = &cfg->items[i];
 			_cfg_free(c, indent + 1);
 		}
@@ -200,19 +229,23 @@ static void _cfg_free(struct config *cfg, int indent){
 	}
 }
 
-void cfg_free(struct config *cfg){
+void cfg_free(struct config *cfg)
+{
 	_cfg_free(cfg, 0);
 	free(cfg);
 }
 
-static struct config *cfg_find_child(struct config *cfg, char *key){
+static struct config *cfg_find_child(struct config *cfg, char *key)
+{
 	struct config *c;
 	int i;
 
 	/* PRINT_TRACE("find %s", key); */
-	for(i = 0; i < cfg->count; i++){
+	for(i = 0; i < cfg->count; i++)
+	{
 		c = &cfg->items[i];
-		if(strcmp(key, c->key) == 0){
+		if(strcmp(key, c->key) == 0)
+		{
 			return c;
 		}
 	}
@@ -220,7 +253,8 @@ static struct config *cfg_find_child(struct config *cfg, char *key){
 	return NULL;
 }
 
-struct config *cfg_get(struct config *cfg, char *key){
+struct config *cfg_get(struct config *cfg, char *key)
+{
 	char path[CONFIG_MAX_LINE];
 	struct config *c;
 	char *f, *fs; /* field, field seperator */
@@ -230,8 +264,10 @@ struct config *cfg_get(struct config *cfg, char *key){
 	strcpy(path, key);
 
 	f = fs = path;
-	while(c){
-		switch(*fs++){
+	while(c)
+	{
+		switch(*fs++)
+		{
 			case '.':
 			case '/':
 				*(fs - 1) = '\0';
@@ -249,20 +285,24 @@ struct config *cfg_get(struct config *cfg, char *key){
 	return c;
 }
 
-int cfg_num(struct config *cfg){
+int cfg_num(struct config *cfg)
+{
 	return atoi(cfg->val);
 }
 
-char *cfg_str(struct config *cfg){
+char *cfg_str(struct config *cfg)
+{
 	return cfg->val;
 }
 
-int cfg_getnum(struct config *cfg, char *key){
+int cfg_getnum(struct config *cfg, char *key)
+{
 	int val;
 	struct config *c;
 
 	c = cfg_get(cfg, key);
-	if(!c){
+	if(!c)
+	{
 		return 0;
 	}
 
@@ -270,42 +310,51 @@ int cfg_getnum(struct config *cfg, char *key){
 	return val;
 }
 
-char *cfg_getstr(struct config *cfg, char *key){
+char *cfg_getstr(struct config *cfg, char *key)
+{
 	struct config *c;
 
 	c = cfg_get(cfg, key);
-	if(!c){
+	if(!c)
+	{
 		return NULL;
 	}
 
 	return c->val;
 }
 
-static void _cfg_print(struct config *cfg, int indent, FILE *fp){
+static void _cfg_print(struct config *cfg, int indent, FILE *fp)
+{
 	struct config *c;
 	char fs;
 	int i, n;
 
-	for(i = 0; i < cfg->count; i++){
+	for(i = 0; i < cfg->count; i++)
+	{
 		c = &cfg->items[i];
-		for(n = 0; n < indent; n++){
+		for(n = 0; n < indent; n++)
+		{
 			putc('\t', fp);
 		}
 
-		if(IS_COMMENT_CONFIG(c)){
+		if(IS_COMMENT_CONFIG(c))
+		{
 			fprintf(fp, "#%s\n", c->val);
-		}else{
+		}else
+		{
 			fs = c->count? ':' : '=';
 			fprintf(fp, "%s %c %s\n", c->key, fs, c->val);
 		}
 
-		if(c->count > 0){
+		if(c->count > 0)
+		{
 			_cfg_print(c, indent + 1, fp);
 		}
 	}
 }
 
-void cfg_print(struct config *cfg, FILE *fp){
+void cfg_print(struct config *cfg, FILE *fp)
+{
 	printf("###### config start #######\n\n");
 	_cfg_print(cfg, 0, fp);
 	printf("\n###### config end #######\n");

@@ -54,6 +54,9 @@ char *cfg_getstr(struct config *cfg, char *key);
 
 # this is a comment
 
+author : ddddd
+	url: http://www.ddddd.net
+
 proxy :
 	php =
 		host = 127.0.0.1
@@ -70,11 +73,13 @@ cgi =
 #include <stdio.h>
 #include "config.h"
 
-int main(int argc, char **argv){
+int main(int argc, char **argv)
+{
 	struct config *cfg, *c;
 
 	cfg = cfg_load_file("cfg_test.conf");
-	if(!cfg){
+	if(!cfg)
+	{
 		return 0;
 	}
 
@@ -82,6 +87,11 @@ int main(int argc, char **argv){
 	printf("proxy.php.host = %s\n", cfg_getstr(cfg, "proxy.php.host"));
 	printf("proxy.php.port = %d\n", cfg_getnum(cfg, "proxy.php.port"));
 	printf("cgi.pl = %s\n", cfg_getstr(cfg, "cgi.pl"));
+	printf("\n");
+
+	c = cfg_get(cfg, "author");
+	printf("author: %s\n", cfg_str(c));
+	printf("url: %s\n", cfg_getstr(c, "url"));
 	printf("\n");
 
 	cfg_free(cfg);

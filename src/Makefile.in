@@ -55,7 +55,7 @@ am_btserver_OBJECTS = cgi_business.$(OBJEXT) cgi_ctrl.$(OBJEXT) \
 	log.$(OBJEXT) curl_ctl.$(OBJEXT) dpm_user.$(OBJEXT) \
 	encode_and_decode.$(OBJEXT) json_analysis.$(OBJEXT) \
 	webctrl.$(OBJEXT) compress.$(OBJEXT) md5.$(OBJEXT) \
-	server.$(OBJEXT)
+	sync.$(OBJEXT) server.$(OBJEXT)
 btserver_OBJECTS = $(am_btserver_OBJECTS)
 btserver_DEPENDENCIES = $(top_builddir)/CONFIG/libconfig.la \
 	$(top_builddir)/DES/libdes.la
@@ -208,15 +208,16 @@ btserver_SOURCES = cgi_business.c \
 	       webctrl.c \
 	       compress.c \
 	       md5.c \
+	       sync.c \
 	       server.c
 
 delete_con_SOURCES = delete_con.c
-btserver_LDADD = -lpthread -lsybdb -lcurl -ljson-c -lz \
+btserver_LDADD = -lpthread -lsybdb -lcurl -ljson-c -lz -levent \
 	$(top_builddir)/CONFIG/libconfig.la \
 	$(top_builddir)/DES/libdes.la
 delete_con_LDADD = -lsybdb $(top_builddir)/CONFIG/libconfig.la
 noinst_HEADERS = head.h freetdstodb.h json_analysis.h HMACSHA1.h log.h encode_and_decode.h curl_ctl.h dpm_user.h sha1.h
-INCLUDES = -I$(top_srcdir)include -I$(top_srcdir)/CONFIG -I$(top_srcdir)/DES
+INCLUDES = -I$(top_srcdir)/CONFIG -I$(top_srcdir)/DES
 all: all-am
 
 .SUFFIXES:
@@ -323,6 +324,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protocol.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/userlink.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/webctrl.Po@am__quote@
 

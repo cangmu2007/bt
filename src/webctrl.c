@@ -417,36 +417,11 @@ void fresh_schema()
 				free(org_stu);
 				org_stu=NULL;
 			}
+			printf("fresh schema\n");
+			writelog("fresh schema");
 			org_stu=stmp;
 		}
 	}
 	else
 		fresh_org=1;
-}
-
-void* listen_schema()
-{
-	pthread_detach(pthread_self()); //分离线程
-	int ret=-1;
-	ReturnData rd;
-
-	for(;;)
-	{
-		memset(&rd,0,sizeof(ReturnData));
-		if((ret=curl_get(LISTEN_MSG_URL,&rd,30,240,NULL,0))>=0)
-		{
-			if(200==ret)
-			{
-				printf("fresh schema\n");
-				writelog("fresh schema");
-				fresh_schema();
-				MSG_INFO(CTRLPERSON);
-				sleep(30);
-			}
-		}
-		if(NULL!=rd.data)
-		{
-			free(rd.data);
-		}
-	}
 }

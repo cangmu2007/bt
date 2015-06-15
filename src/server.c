@@ -62,7 +62,8 @@ int main(int argc, char *argv[])
 	CLIENT_PASSWORD=cfg_getstr(cfg,"USER_SET.CLIENT_PASSWORD");
 	CLIENT_KEY=cfg_getstr(cfg,"USER_SET.CLIENT_KEY");
 	USER_ADDR=cfg_getstr(cfg,"USER_SET.USER_ADDR");
-	LISTEN_MSG_URL=cfg_getstr(cfg,"USER_SET.LISTEN_MSG_URL");
+	HTTP_LISTEN_PORT=cfg_getnum(cfg,"USER_SET.HTTP_LISTEN_PORT");
+	HTTP_LISTEN_URL=cfg_getstr(cfg,"USER_SET.HTTP_LISTEN_URL");
 	
 	if(signal(SIGTERM, exitbt)<0)	//注册关闭信号
 	{
@@ -118,6 +119,7 @@ int main(int argc, char *argv[])
 		printf("setAuth error\n");
 		exit(-1);
 	}
+
 	if(pthread_create(&listenurl,NULL,(void*)listen_schema,NULL)<0)
 	{
 		printf("pthread_create listenurl error\n");
@@ -489,15 +491,15 @@ void exitbt(int signo)
 	{
 		printf("pthread_cancle listenurl error\n");
 		writelog("pthread_cancle listenurl");
-        exit(-1);
 	}
+	exit_listen();	//关闭监听
+
 	curl_release();	//关闭curl
 
 	if(pthread_mutex_destroy(&mutex_cgi)<0)  //销毁互斥锁
     {
         printf("pthread_mutex_destroy(cgi)");
 		writelog("pthread_mutex_destroy(cgi)");
-        exit(-1);
     }
 
 	CloseConnection(dph);	//断开数据库
