@@ -17,7 +17,13 @@ void root_handler(struct evhttp_request *req, void *arg)
 		{
 			evbuffer_add_printf(buf, "PostData: %s\n", post_data);
 		}*/
-		fresh_schema();
+		pthread_t pid;
+		int flg=1;
+		if(pthread_create(&pid,NULL,(void*)fresh_schema,(void*)(&flg))<0)
+		{
+			printf("pthread_create fresh_schema error\n");
+			exit(-1);
+		}
 		MSG_INFO(CTRLPERSON);
 		evhttp_send_reply(req, HTTP_OK, "OK", buf);
 	}

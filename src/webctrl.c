@@ -403,8 +403,13 @@ char* web_get_notify(UL ul,int flag)
 	return result;
 }
 
-void fresh_schema()
+static pthread_mutex_t schema_fresh=PTHREAD_MUTEX_INITIALIZER;	//用户链表处理线程锁
+void* fresh_schema(void* flg)
 {
+	int f=*((int*)flg);
+	if(f)
+		pthread_detach(pthread_self()); //分离线程
+	pthread_mutex_lock(&schema_fresh);
 	UL p=user->next;
 	if(p)
 	{
@@ -424,4 +429,32 @@ void fresh_schema()
 	}
 	else
 		fresh_org=1;
+	pthread_mutex_unlock(&schema_fresh);
 }
+
+/*void* listen_schema()
+{
+	pthread_detach(pthread_self()); //分离线程
+	int ret=-1;
+	ReturnData rd;
+
+	for(;;)
+	{
+		memset(&rd,0,sizeof(ReturnData));
+		if((ret=curl_get(LISTEN_MSG_URL,&rd,30,240,NULL,0))>=0)
+		{
+			if(200==ret)
+			{
+				printf("fresh schema\n");
+				writelog("fresh schema");
+				fresh_schema();
+				MSG_INFO(CTRLPERSON);
+				sleep(30);
+			}
+		}
+		if(NULL!=rd.data)
+		{
+			free(rd.data);
+		}
+	}
+}*/

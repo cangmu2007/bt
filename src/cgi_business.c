@@ -91,7 +91,7 @@ char* GetOrg_Stu()
 {
 	if(1==fresh_org||NULL==org_stu)
 	{
-		fresh_schema();
+		fresh_schema((void*)0);
 		if(NULL==org_stu)
 		{
 			return "FAULT";

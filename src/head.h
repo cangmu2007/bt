@@ -410,7 +410,6 @@ char* CLIENT_ID;
 char* CLIENT_PASSWORD;
 char* CLIENT_KEY;
 char* USER_ADDR;
-char* LISTEN_MSG_URL;
 
 //同步监听
 uint HTTP_LISTEN_PORT;	//监听端口
@@ -565,7 +564,7 @@ char* web_get_info(UL ul,char* desid,int flag);	//获取用户信息
 int web_check_avatar(char* pid,char* md5val);	//验证头像文件MD5
 int web_updata_info(UL ul,char* Mood,char* Other);	//更新用户信息
 char* web_get_notify(UL ul,int flag);	//获取通知公告未读数
-void fresh_schema();	//更新组织结构
+void* fresh_schema(void* flg);	//更新组织结构
 /******************************************************************************************************/
 
 
