@@ -73,13 +73,11 @@ cgi =
 #include <stdio.h>
 #include "config.h"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
 	struct config *cfg, *c;
 
 	cfg = cfg_load_file("cfg_test.conf");
-	if(!cfg)
-	{
+	if(!cfg){
 		return 0;
 	}
 

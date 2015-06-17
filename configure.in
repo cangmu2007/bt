@@ -19,7 +19,7 @@ if test "$enable_epoll" = yes; then
 fi
 
 # Checks for libraries.
-#AC_CHECK_LIB([pthread],[sybdb],[z],[json-c],[curl],[event])
+AC_CHECK_LIB([pthread],[sybdb],[z],[json-c],[curl],[event])
 
 # Checks for header files.
 AC_HEADER_STDC
