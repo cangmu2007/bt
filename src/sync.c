@@ -39,6 +39,7 @@ int init_listen_scheam(uint port,char* url)
 	}
 	evhttp_set_cb(httpd, url, root_handler, NULL);
 	event_dispatch();
+	return 0;
 }
 
 void exit_listen()
