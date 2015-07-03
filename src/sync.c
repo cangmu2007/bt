@@ -26,6 +26,7 @@ void root_handler(struct evhttp_request *req, void *arg)
 		}
 		MSG_INFO(CTRLPERSON);
 		evhttp_send_reply(req, HTTP_OK, "OK", buf);
+		evbuffer_free(buf);
 	}
 }
 
