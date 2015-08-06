@@ -68,6 +68,9 @@ int main(int argc,char *argv[])
 	dbclose(dbprocess);
 	dbloginfree(loginrec); 
 	dbexit();
+	
+	cfg_free(cfg);
+	cfg=NULL;
 
 	return 0;
 }
