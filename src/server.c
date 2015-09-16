@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 
     /*************************************传统POLL方式，通用于任何系统*************************/
 #else
-	struct pollfd master[MAX_CGI_LINK+1];
+	struct pollfd master[MAX_CGI_LINK*20+1];
 	for(i = 0; i < MAX_CGI_LINK+1; i++)
 		master[i].fd = -1;
 
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    if(listen(cgi_fd, MAX_CGI_LINK)<0)
+    if(listen(cgi_fd, MAX_CGI_LINK*20)<0)
     {
         perror("TCP cgi listen");
 		writelog("TCP cgi listen");
@@ -322,7 +322,7 @@ int main(int argc, char *argv[])
                         exit(-1);
                     }
 
-                    if(listen(cgi_fd, MAX_CGI_LINK)<0)
+                    if(listen(cgi_fd, MAX_CGI_LINK*20)<0)
                     {
                         perror("TCP cgi relisten");
 						writelog("TCP cgi relisten");
@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
                     exit(-1);
                 }
 
-                if(listen(cgi_fd, MAX_CGI_LINK)<0)
+                if(listen(cgi_fd, MAX_CGI_LINK*20)<0)
                 {
                     perror("TCP cgi relisten");
 					writelog("TCP cgi relisten");
