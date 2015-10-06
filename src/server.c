@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
                     close(tmpfd);
                 }
                 epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
-                //events[i].data.fd=-1;
+                events[i].data.fd=-1;
             }
             else if(events[i].events&EPOLLOUT)
             {
