@@ -16,7 +16,6 @@ int main(int argc, char *argv[])
     
 	int i=0;
     int new_fd=-1;
-	int num = 1;   
     struct sockaddr_un cgi_addr;
 
 	/********************************************************************************************/
@@ -202,7 +201,7 @@ int main(int argc, char *argv[])
         exit(-1);
     }
     ev.data.fd=cgi_fd;
-    ev.events=EPOLLIN|EPOLLET;
+    ev.events=EPOLLIN;
     if(epoll_ctl(epfd, EPOLL_CTL_ADD, cgi_fd, &ev)<0)
     {
         perror("epoll_ctl error");
@@ -271,7 +270,7 @@ int main(int argc, char *argv[])
     {
         /*************************epoll方法，需要Linux2.6.18以上支持*************/
 #ifdef LINUX
-        if((nfds=epoll_wait(epfd,events,num,-1))<0)
+        if((nfds=epoll_wait(epfd,events,MAX_CGI_LINK*20,-1))<0)
         {
             //if(errno==EINTR)    //调试时使用，调试结束后必须注释
                 //continue;
@@ -336,9 +335,8 @@ int main(int argc, char *argv[])
                 setnonblocking(new_fd);
 
                 ev.data.fd=new_fd;
-                ev.events=EPOLLIN|EPOLLET;
+                ev.events=EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, new_fd, &ev);
-                num++;
             }
             else if(events[i].events & EPOLLIN)
             {
@@ -353,7 +351,6 @@ int main(int argc, char *argv[])
                     close(tmpfd);
                 }
                 epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
-                num--;
                 //events[i].data.fd=-1;
             }
             else if(events[i].events&EPOLLOUT)
